@@ -1,18 +1,21 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
-import { Class } from "../../entities/class.entity.js";
 import { ClassMaster } from "../../entities/class-master.entity.js";
 import { Subject } from "../../entities/subject.entity.js";
 import { User } from "../../entities/user.entity.js";
+import { SchoolClass } from "../../entities/school-class.entity.js";
+import { ClassSubject } from "../../entities/class-subject.entity.js";
+import { ClassTeacher } from "../../entities/class-teacher.entity.js";
+import { SubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 import { toIntID } from "../../db/index.js";
 
 @Injectable()
 export class ClassService {
   constructor(
-    @InjectRepository(Class)
-    private classRepo: Repository<Class>,
+    @InjectRepository(SchoolClass)
+    private schoolClassRepo: Repository<SchoolClass>,
     @InjectRepository(ClassMaster)
     private classMasterRepo: Repository<ClassMaster>,
     @InjectRepository(Subject)
@@ -21,7 +24,7 @@ export class ClassService {
     private userRepo: Repository<User>,
     private ayService: AcademicYearService,
     private dataSource: DataSource
-  ) {}
+  ) { }
 
   async resolveClassMasterId(
     className: string,
@@ -50,53 +53,58 @@ export class ClassService {
       sayId = await this.ayService.getSchoolAcademicYearId(schoolId, headerVal);
     }
 
-    const qb = this.classRepo
-      .createQueryBuilder("c")
-      .leftJoinAndSelect("c.teacher", "t")
-      .leftJoinAndSelect("c.school_academic_year", "say")
+    const scQb = this.schoolClassRepo
+      .createQueryBuilder("sc")
+      .leftJoinAndSelect("sc.teacher", "t")
+      .leftJoinAndSelect("sc.school_academic_year", "say")
       .leftJoinAndSelect("say.academic_year", "ay");
 
     if (schoolId) {
-      qb.andWhere("c.school_id = :schoolId", { schoolId });
+      scQb.andWhere("sc.school_id = :schoolId", { schoolId });
     }
     if (sayId) {
-      qb.andWhere("c.school_academic_year_id = :sayId", { sayId });
+      scQb.andWhere("sc.school_academic_year_id = :sayId", { sayId });
     }
 
-    qb.orderBy("c.name", "ASC").addOrderBy("c.section", "ASC");
-
-    const classes = await qb.getMany();
+    scQb.orderBy("sc.name", "ASC").addOrderBy("sc.division", "ASC");
+    const schoolClasses = await scQb.getMany();
 
     return Promise.all(
-      classes.map(async (cls) => {
-        const studentCountRes = await this.classRepo.query(
+      schoolClasses.map(async (sc) => {
+        const classId = sc.id;
+        const studentCountRes = await this.schoolClassRepo.query(
           `SELECT COUNT(*)::int AS count FROM students WHERE class_id = $1`,
-          [cls.id]
+          [classId]
         );
-        const subjectsRes = await this.classRepo.query(
+        const subjectsRes = await this.schoolClassRepo.query(
           `SELECT ARRAY_AGG(name) AS subjects FROM subjects WHERE class_id = $1`,
-          [cls.id]
+          [classId]
         );
 
+        const teacherId = sc.teacher_id || null;
+        const teacherName = sc.teacher ? sc.teacher.name : null;
+
         return {
-          id: String(cls.id),
-          name: cls.name,
-          section: cls.section,
-          teacherId: cls.teacher_id ? String(cls.teacher_id) : null,
-          teacherName: cls.teacher ? cls.teacher.name : null,
+          id: String(classId),
+          schoolClassId: String(sc.id),
+          name: sc.name,
+          section: sc.division || "",
+          division: sc.division || "",
+          teacherId: teacherId ? String(teacherId) : null,
+          teacherName: teacherName,
           studentCount: studentCountRes[0]?.count || 0,
           subjects: subjectsRes[0]?.subjects || [],
-          schoolId: String(cls.school_id),
-          academicYearId: cls.school_academic_year_id ? String(cls.school_academic_year_id) : null,
-          academicYear: cls.school_academic_year?.academic_year?.label || null,
-          classMasterId: cls.class_master_id ? String(cls.class_master_id) : null,
+          schoolId: String(sc.school_id),
+          academicYearId: sc.school_academic_year_id ? String(sc.school_academic_year_id) : null,
+          academicYear: sc.school_academic_year?.academic_year?.label || null,
+          classMasterId: sc.class_master_id ? String(sc.class_master_id) : null,
         };
       })
     );
   }
 
   async getClassById(classId: number) {
-    return this.classRepo.findOne({ where: { id: classId } });
+    return this.schoolClassRepo.findOne({ where: { id: classId } });
   }
 
   async getFullClassRecord(classId: number) {
@@ -122,15 +130,24 @@ export class ClassService {
     await queryRunner.startTransaction();
 
     try {
-      const newClass = queryRunner.manager.create(Class, {
+      const newSchoolClass = queryRunner.manager.create(SchoolClass, {
         school_id: schoolId,
         school_academic_year_id: finalSayId,
         class_master_id: finalClassMasterId,
         name,
-        section,
+        division: section,
         teacher_id: dbTeacherId,
       });
-      const savedClass = await queryRunner.manager.save(Class, newClass);
+      const savedClass = await queryRunner.manager.save(SchoolClass, newSchoolClass);
+
+      if (dbTeacherId) {
+        const newClassTeacher = queryRunner.manager.create(ClassTeacher, {
+          class_id: savedClass.id,
+          teacher_id: dbTeacherId,
+          is_primary: true,
+        });
+        await queryRunner.manager.save(ClassTeacher, newClassTeacher);
+      }
 
       if (subjects && Array.isArray(subjects)) {
         for (const sub of subjects) {
@@ -144,7 +161,22 @@ export class ClassService {
             class_id: savedClass.id,
             teacher_id: dbTeacherId,
           });
-          await queryRunner.manager.save(Subject, newSub);
+          const savedSub = await queryRunner.manager.save(Subject, newSub);
+
+          const newClassSub = queryRunner.manager.create(ClassSubject, {
+            class_id: savedClass.id,
+            subject_id: savedSub.id,
+          });
+          await queryRunner.manager.save(ClassSubject, newClassSub);
+
+          if (dbTeacherId) {
+            const newSubTeacher = queryRunner.manager.create(SubjectTeacher, {
+              subject_id: savedSub.id,
+              teacher_id: dbTeacherId,
+              class_id: savedClass.id,
+            });
+            await queryRunner.manager.save(SubjectTeacher, newSubTeacher);
+          }
         }
       }
 
@@ -181,13 +213,32 @@ export class ClassService {
     await queryRunner.startTransaction();
 
     try {
-      await queryRunner.manager.update(Class, classId, {
+      await queryRunner.manager.update(SchoolClass, classId, {
         name,
-        section,
+        division: section,
         teacher_id: dbTeacherId,
         school_academic_year_id: finalSayId,
         class_master_id: finalClassMasterId,
       });
+
+      if (dbTeacherId) {
+        const existingCT = await queryRunner.manager.findOne(ClassTeacher, {
+          where: { class_id: classId },
+        });
+        if (existingCT) {
+          await queryRunner.manager.update(ClassTeacher, existingCT.id, {
+            teacher_id: dbTeacherId,
+            is_primary: true,
+          });
+        } else {
+          const ct = queryRunner.manager.create(ClassTeacher, {
+            class_id: classId,
+            teacher_id: dbTeacherId,
+            is_primary: true,
+          });
+          await queryRunner.manager.save(ClassTeacher, ct);
+        }
+      }
 
       if (subjects && Array.isArray(subjects)) {
         const cleanSubjects = subjects.map((s: any) => String(s).trim()).filter(Boolean);
@@ -226,7 +277,7 @@ export class ClassService {
   }
 
   async deleteClass(classId: number) {
-    await this.classRepo.delete(classId);
+    await this.schoolClassRepo.delete(classId);
   }
 
   async getClassMasters() {
@@ -249,11 +300,11 @@ export class ClassService {
         classMasterId ? toIntID(String(classMasterId)) : null
       );
 
-      let existing = await this.classRepo.findOne({
+      let existing = await this.schoolClassRepo.findOne({
         where: {
           school_id: schoolId,
           name,
-          section,
+          division: section,
           school_academic_year_id: finalSayId || undefined,
         },
       });
@@ -262,27 +313,39 @@ export class ClassService {
         createdClasses.push({
           id: String(existing.id),
           name: existing.name,
-          section: existing.section,
+          section: existing.division || "",
+          division: existing.division || "",
           schoolAcademicYearId: existing.school_academic_year_id ? String(existing.school_academic_year_id) : null,
           classMasterId: existing.class_master_id ? String(existing.class_master_id) : null,
         });
         continue;
       }
 
-      const newCls = this.classRepo.create({
+      const newCls = this.schoolClassRepo.create({
         school_id: schoolId,
         school_academic_year_id: finalSayId,
         class_master_id: finalClassMasterId,
         name,
-        section,
+        division: section,
         teacher_id: dbTeacherId,
       });
 
-      const saved = await this.classRepo.save(newCls);
+      const saved = await this.schoolClassRepo.save(newCls);
+
+      if (dbTeacherId) {
+        await this.dataSource.query(
+          `INSERT INTO class_teachers (class_id, teacher_id, is_primary)
+           VALUES ($1, $2, TRUE)
+           ON CONFLICT DO NOTHING`,
+          [saved.id, dbTeacherId]
+        );
+      }
+
       createdClasses.push({
         id: String(saved.id),
         name: saved.name,
-        section: saved.section,
+        section: saved.division || "",
+        division: saved.division || "",
         schoolAcademicYearId: saved.school_academic_year_id ? String(saved.school_academic_year_id) : null,
         classMasterId: saved.class_master_id ? String(saved.class_master_id) : null,
       });
@@ -291,3 +354,4 @@ export class ClassService {
     return createdClasses;
   }
 }
+

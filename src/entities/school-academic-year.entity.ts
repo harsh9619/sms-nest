@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
-import { School } from "./school.entity.js";
+import type { School } from "./school.entity.js";
 import { AcademicYear } from "./academic-year.entity.js";
 
 @Entity("school_academic_years")
@@ -18,7 +18,7 @@ export class SchoolAcademicYear {
   @Column({ type: "int" })
   school_id: number;
 
-  @ManyToOne(() => School, { onDelete: "CASCADE" })
+  @ManyToOne("School", { onDelete: "CASCADE" })
   @JoinColumn({ name: "school_id" })
   school: School;
 

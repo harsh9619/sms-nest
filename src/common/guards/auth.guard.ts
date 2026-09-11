@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from "@nestjs/common";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -20,7 +20,8 @@ export class JwtAuthGuard implements CanActivate {
     const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
 
     try {
-      const decoded = jwt.verify(token, jwtSecret);
+      const verifyFn = jwt.verify || (jwt as any).default?.verify;
+      const decoded = verifyFn(token, jwtSecret);
       request.user = decoded;
       return true;
     } catch (error) {

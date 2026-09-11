@@ -34,7 +34,7 @@ export class FeeService {
       studentId: String(f.student_id),
       studentName: f.student?.user ? f.student.user.name : "",
       rollNumber: f.student ? f.student.roll_no : "",
-      class: f.student?.class ? `${f.student.class.name}-${f.student.class.section}` : "",
+      class: f.student?.class ? `${f.student.class.name}-${f.student.class.division || ""}` : "",
       amount: Number(f.amount),
       type: f.fee_type,
       feeType: f.fee_type,

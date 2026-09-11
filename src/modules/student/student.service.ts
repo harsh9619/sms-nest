@@ -87,14 +87,14 @@ export class StudentService {
 
   async getOrCreateClass(schoolId: number, className: string, section: string) {
     let cls = await this.classRepo.findOne({
-      where: { school_id: schoolId, name: className, section },
+      where: { school_id: schoolId, name: className, division: section },
     });
 
     if (!cls) {
       cls = this.classRepo.create({
         school_id: schoolId,
         name: className,
-        section,
+        division: section,
       });
       cls = await this.classRepo.save(cls);
     }
@@ -226,7 +226,7 @@ export class StudentService {
       phone: st.user ? st.user.phone : null,
       class_id: st.class_id,
       class_name: st.class ? st.class.name : "",
-      section: st.class ? st.class.section : "",
+      section: st.class ? (st.class.division || "") : "",
       roll_no: st.roll_no,
       roll_number: st.roll_no,
       dob: st.dob,

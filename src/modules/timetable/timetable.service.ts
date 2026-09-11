@@ -33,7 +33,7 @@ export class TimetableService {
     return slots.map((s) => ({
       id: String(s.id),
       classId: String(s.class_id),
-      className: s.class ? `${s.class.name}-${s.class.section}` : "",
+      className: s.class ? `${s.class.name}-${s.class.division || ""}` : "",
       subjectId: String(s.subject_id),
       subjectName: s.subject ? s.subject.name : "",
       teacherId: s.subject?.teacher_id ? String(s.subject.teacher_id) : null,

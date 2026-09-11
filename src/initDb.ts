@@ -78,7 +78,7 @@ async function ensureStudentExists(appQuery: any, studentId: string, name: strin
   const sayId = await getSchoolAcadYearId(appQuery, schoolUuid, "2024-25");
 
   const classRes = await appQuery(
-    "SELECT id FROM classes WHERE school_id = $1 AND name = $2 AND section = $3 LIMIT 1",
+    "SELECT id FROM school_classes WHERE school_id = $1 AND name = $2 AND division = $3 LIMIT 1",
     [schoolUuid, className, sectionName]
   );
   const classId = classRes.rows[0]?.id || null;
@@ -462,7 +462,7 @@ async function initializeDatabase() {
     }
 
     // --- Migrate Classes & Class Subjects ---
-    if (data.classes && (await isTableEmpty("classes"))) {
+    if (data.classes && (await isTableEmpty("school_classes"))) {
       console.log(`⏳ Seeding ${data.classes.length} classes and subjects...`);
       for (const c of data.classes) {
         const schoolId = toUUID(c.schoolId);
@@ -479,25 +479,9 @@ async function initializeDatabase() {
         const classId = toUUID(c.id);
         const teacherId = c.teacherId ? toUUID(c.teacherId) : null;
 
-        await appQuery(
-          `INSERT INTO classes (id, school_id, school_academic_year_id, class_master_id, name, section, teacher_id)
-           OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (id) DO NOTHING`,
-          [
-            classId,
-            schoolId,
-            sayId,
-            classMasterId,
-            c.name,
-            c.section,
-            teacherId,
-          ]
-        );
-
         // Populate school_classes
         await appQuery(
-          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, class_id, name, division)
+          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, name, division, teacher_id)
            OVERRIDING SYSTEM VALUE
            VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (id) DO NOTHING`,
@@ -506,9 +490,9 @@ async function initializeDatabase() {
             schoolId,
             sayId,
             classMasterId,
-            classId,
             c.name,
-            c.section,
+            c.section || c.division,
+            teacherId,
           ]
         );
 
@@ -598,7 +582,7 @@ async function initializeDatabase() {
 
         // Lookup matching class ID
         const classRes = await appQuery(
-          "SELECT id FROM classes WHERE school_id = $1 AND name = $2 AND section = $3 LIMIT 1",
+          "SELECT id FROM school_classes WHERE school_id = $1 AND name = $2 AND division = $3 LIMIT 1",
           [schoolId, s.class, s.section]
         );
         const classId = classRes.rows[0]?.id || null;
@@ -647,7 +631,7 @@ async function initializeDatabase() {
         const sayId = await getSchoolAcadYearId(appQuery, schoolId, schoolLabel);
 
         const classRes = await appQuery(
-          "SELECT id FROM classes WHERE school_id = $1 AND name = $2 AND section = $3 LIMIT 1",
+          "SELECT id FROM school_classes WHERE school_id = $1 AND name = $2 AND division = $3 LIMIT 1",
           [schoolId, a.class, a.section]
         );
         const classId = classRes.rows[0]?.id || null;
@@ -860,7 +844,7 @@ async function initializeDatabase() {
       console.log("⏳ Seeding timetable slots...");
       const schoolId = toUUID("1");
       const sayId = await getSchoolAcadYearId(appQuery, schoolId, "2024-25");
-      const classRes = await appQuery("SELECT id FROM classes WHERE school_id = $1 LIMIT 1", [schoolId]);
+      const classRes = await appQuery("SELECT id FROM school_classes WHERE school_id = $1 LIMIT 1", [schoolId]);
       const classId = classRes.rows[0]?.id;
 
       if (classId) {
@@ -898,7 +882,7 @@ async function initializeDatabase() {
       console.log("⏳ Seeding homework assignments...");
       const schoolId = toUUID("1");
       const sayId = await getSchoolAcadYearId(appQuery, schoolId, "2024-25");
-      const classRes = await appQuery("SELECT id, teacher_id FROM classes WHERE school_id = $1 LIMIT 1", [schoolId]);
+      const classRes = await appQuery("SELECT id, teacher_id FROM school_classes WHERE school_id = $1 LIMIT 1", [schoolId]);
       const classId = classRes.rows[0]?.id;
       const teacherId = classRes.rows[0]?.teacher_id;
 
@@ -981,7 +965,7 @@ async function initializeDatabase() {
 
     console.log("⏳ Syncing identity sequences...");
     const tables = [
-      "schools", "users", "classes", "subjects", "students", "timetables",
+      "schools", "users", "school_classes", "subjects", "students", "timetables",
       "attendance", "class_subjects", "fees", "homework", "marks",
       "salary_structures", "salary_records", "notices",
       "academic_years", "school_academic_years",

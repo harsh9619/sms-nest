@@ -15,7 +15,7 @@ import { toIntID } from "../../db/index.js";
 
 @Controller("api/:schoolId/classes")
 export class ClassController {
-  constructor(private readonly classService: ClassService) {}
+  constructor(private readonly classService: ClassService) { }
 
   @Get("masters")
   async getClassMasters() {

@@ -33,7 +33,7 @@ export class HomeworkService {
     return list.map((h) => ({
       id: String(h.id),
       classId: String(h.class_id),
-      className: h.class ? `${h.class.name}-${h.class.section}` : "",
+      className: h.class ? `${h.class.name}-${h.class.division || ""}` : "",
       subjectId: String(h.subject_id),
       subjectName: h.subject ? h.subject.name : "",
       teacherId: h.teacher_id ? String(h.teacher_id) : null,

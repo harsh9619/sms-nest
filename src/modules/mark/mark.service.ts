@@ -50,7 +50,7 @@ export class MarkService {
       studentId: String(m.student_id),
       studentName: m.student?.user ? m.student.user.name : "",
       rollNumber: m.student ? m.student.roll_no : "",
-      class: m.student?.class ? `${m.student.class.name}-${m.student.class.section}` : "",
+      class: m.student?.class ? `${m.student.class.name}-${m.student.class.division || ""}` : "",
       subjectId: String(m.subject_id),
       subjectName: m.subject ? m.subject.name : "",
       examType: m.exam_type,

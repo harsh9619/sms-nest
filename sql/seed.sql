@@ -150,10 +150,10 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('public.subject_masters', 'id'), MAX(id), TRUE) FROM public.subject_masters;
 
 -- =======================
--- CLASSES
+-- SCHOOL CLASSES
 -- =======================
 
-INSERT INTO classes (id, school_id, school_academic_year_id, class_master_id, name, section, teacher_id)
+INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, name, division, teacher_id)
 OVERRIDING SYSTEM VALUE VALUES
   -- Greenwood classes  (school_academic_year_id=1 → 2024-25 for school 1)
   (1, 1, 1, 7,  '5',  'A', 10),   -- class_master_id 7 = Class 5
@@ -166,7 +166,7 @@ OVERRIDING SYSTEM VALUE VALUES
   (6, 2, 3, 11, '9',  'A', 21)    -- class_master_id 11 = Class 9
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('public.classes', 'id'), MAX(id), TRUE) FROM public.classes;
+SELECT setval(pg_get_serial_sequence('public.school_classes', 'id'), MAX(id), TRUE) FROM public.school_classes;
 
 -- =======================
 -- SUBJECTS
@@ -216,22 +216,6 @@ OVERRIDING SYSTEM VALUE VALUES
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.subjects', 'id'), MAX(id), TRUE) FROM public.subjects;
-
--- =======================
--- SCHOOL CLASSES
--- =======================
-
-INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, class_id, name, division)
-OVERRIDING SYSTEM VALUE VALUES
-  (1, 1, 1, 7,  1, '5',  'A'),
-  (2, 1, 1, 7,  2, '5',  'B'),
-  (3, 1, 1, 10, 3, '8',  'A'),
-  (4, 1, 1, 12, 4, '10', 'A'),
-  (5, 2, 3, 8,  5, '6',  'A'),
-  (6, 2, 3, 11, 6, '9',  'A')
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('public.school_classes', 'id'), MAX(id), TRUE) FROM public.school_classes;
 
 -- =======================
 -- CLASS SUBJECTS

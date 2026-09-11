@@ -21,6 +21,10 @@ import { SalaryStructure } from "./entities/salary-structure.entity.js";
 import { SalaryRecord } from "./entities/salary-record.entity.js";
 import { Notice } from "./entities/notice.entity.js";
 import { MasterTheme } from "./entities/master-theme.entity.js";
+import { SchoolClass } from "./entities/school-class.entity.js";
+import { ClassSubject } from "./entities/class-subject.entity.js";
+import { ClassTeacher } from "./entities/class-teacher.entity.js";
+import { SubjectTeacher } from "./entities/subject-teacher.entity.js";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { SchoolModule } from "./modules/school/school.module.js";
@@ -74,6 +78,10 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               SalaryRecord,
               Notice,
               MasterTheme,
+              SchoolClass,
+              ClassSubject,
+              ClassTeacher,
+              SubjectTeacher,
             ],
             synchronize: false,
             extra: {
@@ -110,6 +118,10 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             SalaryRecord,
             Notice,
             MasterTheme,
+            SchoolClass,
+            ClassSubject,
+            ClassTeacher,
+            SubjectTeacher,
           ],
           synchronize: false,
           extra: {

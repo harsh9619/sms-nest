@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../../entities/user.entity.js";
 import * as crypto from "crypto";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 @Injectable()
 export class AuthService {
@@ -40,7 +40,8 @@ export class AuthService {
 
   generateToken(user: any) {
     const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
-    return jwt.sign(
+    const signFn = jwt.sign || (jwt as any).default?.sign;
+    return signFn(
       {
         sub: user.id,
         email: user.email,

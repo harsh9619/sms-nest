@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
+import type { SchoolAcademicYear } from "./school-academic-year.entity.js";
 
 @Entity("schools")
 export class School {
@@ -50,6 +51,9 @@ export class School {
 
   @Column({ type: "text", default: "light" })
   appearance_mode: string;
+
+  @OneToMany("SchoolAcademicYear", "school")
+  academic_years: SchoolAcademicYear[];
 
   @CreateDateColumn({ type: "timestamptz" })
   created_at: Date;
