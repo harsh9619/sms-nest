@@ -58,6 +58,10 @@ async function ensureDatabaseExists() {
   }
 }
 
+async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
+  await appQuery(`ALTER TABLE school_classes DROP COLUMN IF EXISTS teacher_id`);
+}
+
 async function ensureStudentExists(appQuery: any, studentId: string, name: string, rollNumber: string, className: string, sectionName: string, schoolId: string) {
   const studentUuid = toUUID(studentId);
   const res = await appQuery("SELECT 1 FROM students WHERE id = $1", [studentUuid]);
@@ -197,6 +201,7 @@ async function initializeDatabase() {
     }
     const sql = fs.readFileSync(SCHEMA_PATH, "utf-8");
     await appQuery(sql);
+    await removeLegacySchoolClassTeacherColumn(appQuery);
     console.log("✅ Database schema initialized successfully.");
 
     // 4b. Ensure two-table academic year structure exists (additive migration)
@@ -517,9 +522,9 @@ async function initializeDatabase() {
 
         // Populate school_classes
         await appQuery(
-          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division, teacher_id)
+          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division)
            OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (id) DO NOTHING`,
           [
             classId,
@@ -529,7 +534,6 @@ async function initializeDatabase() {
             divisionMasterId,
             c.name,
             c.section || c.division,
-            teacherId,
           ]
         );
 
@@ -917,7 +921,15 @@ async function initializeDatabase() {
       console.log("⏳ Seeding homework assignments...");
       const schoolId = toUUID("1");
       const sayId = await getSchoolAcadYearId(appQuery, schoolId, "2024-25");
-      const classRes = await appQuery("SELECT id, teacher_id FROM school_classes WHERE school_id = $1 LIMIT 1", [schoolId]);
+      const classRes = await appQuery(
+        `SELECT sc.id, sct.teacher_id
+         FROM school_classes sc
+         LEFT JOIN school_class_teachers sct
+           ON sct.class_id = sc.id AND sct.is_primary = TRUE
+         WHERE sc.school_id = $1
+         LIMIT 1`,
+        [schoolId]
+      );
       const classId = classRes.rows[0]?.id;
       const teacherId = classRes.rows[0]?.teacher_id;
 

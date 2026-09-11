@@ -6,12 +6,13 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { ClassMaster } from "./class-master.entity.js";
 import { DivisionMaster } from "./division-master.entity.js";
-import { User } from "./user.entity.js";
+import type { SchoolClassTeacher } from "./class-teacher.entity.js";
 
 @Entity("school_classes")
 export class SchoolClass {
@@ -56,12 +57,8 @@ export class SchoolClass {
     return this.division;
   }
 
-  @Column({ type: "int", nullable: true })
-  teacher_id: number;
-
-  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "teacher_id" })
-  teacher: User;
+  @OneToMany("SchoolClassTeacher", "class")
+  class_teachers: SchoolClassTeacher[];
 
   @CreateDateColumn({ type: "timestamptz" })
   created_at: Date;

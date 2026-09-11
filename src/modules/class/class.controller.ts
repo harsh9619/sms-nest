@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Delete,
+  Query,
   Param,
   Headers,
   Body,
@@ -22,6 +23,24 @@ export class ClassController {
     return this.classService.getClassMasters();
   }
 
+   @Get("div_masters")
+  async getDivisionMasters() {
+    return this.classService.getDivisionMasters();
+  }
+
+  @Get("teachers")
+  async getSchoolClassTeachers(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("classId") classIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    return this.classService.getSchoolClassTeachers(
+      toIntID(String(schoolIdStr)),
+      academicYearHeader ? toIntID(String(academicYearHeader)) : null,
+      classIdStr ? toIntID(String(classIdStr)) : null
+    );
+  }
+
   @Get()
   async getClasses(
     @Param("schoolId") schoolIdStr: string,
@@ -38,10 +57,19 @@ export class ClassController {
     @Body() body: any
   ) {
     const schoolId = toIntID(String(schoolIdStr));
-    const { name, section, teacherId, subjects, academicYear } = body;
+    const {
+      name,
+      section,
+      teacherId,
+      subjects,
+      classMasterId,
+      divisionMasterId,
+      schoolAcademicYearId,
+      academicYear,
+    } = body;
 
-    if (!name || !section) {
-      throw new BadRequestException("Class name and section are required.");
+    if (!name) {
+      throw new BadRequestException("Class name is required.");
     }
 
     const dbTeacherId = teacherId ? toIntID(String(teacherId)) : null;
@@ -52,6 +80,9 @@ export class ClassController {
         section,
         teacherId: dbTeacherId,
         subjects,
+        classMasterId,
+        divisionMasterId,
+        schoolAcademicYearId,
         academicYear: academicYear || null,
       });
 
@@ -95,10 +126,19 @@ export class ClassController {
     }
 
     const schoolId = existing.school_id;
-    const { name, section, teacherId, subjects, academicYear } = body;
+    const {
+      name,
+      section,
+      teacherId,
+      subjects,
+      classMasterId,
+      divisionMasterId,
+      schoolAcademicYearId,
+      academicYear,
+    } = body;
 
-    if (!name || !section) {
-      throw new BadRequestException("Class name and section are required.");
+    if (!name) {
+      throw new BadRequestException("Class name is required.");
     }
 
     const dbTeacherId = teacherId ? toIntID(String(teacherId)) : null;
@@ -112,6 +152,9 @@ export class ClassController {
           section,
           teacherId: dbTeacherId,
           subjects,
+          classMasterId,
+          divisionMasterId,
+          schoolAcademicYearId,
           academicYear: academicYear || null,
         },
         academicYearHeader

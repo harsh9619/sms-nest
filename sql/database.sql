@@ -233,7 +233,6 @@ CREATE TABLE IF NOT EXISTS school_classes (
   division_master_id      INT          REFERENCES division_masters(id)       ON DELETE SET NULL,
   name                    VARCHAR(50)  NOT NULL,
   division                VARCHAR(10),
-  teacher_id              INT          REFERENCES users(id) ON DELETE SET NULL,
   created_at              TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ  NOT NULL DEFAULT now(),
   UNIQUE (school_id, school_academic_year_id, name, division)

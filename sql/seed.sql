@@ -167,17 +167,17 @@ SELECT setval(pg_get_serial_sequence('public.division_masters', 'id'), MAX(id), 
 -- SCHOOL CLASSES
 -- =======================
 
-INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division, teacher_id)
+INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division)
 OVERRIDING SYSTEM VALUE VALUES
   -- Greenwood classes  (school_academic_year_id=1 → 2024-25 for school 1)
-  (1, 1, 1, 7,  1, '5',  'A', 10),   -- class_master_id 7 = Class 5, division_master_id 1 = A
-  (2, 1, 1, 7,  2, '5',  'B', 11),   -- division_master_id 2 = B
-  (3, 1, 1, 10, 1, '8',  'A', 12),   -- class_master_id 10 = Class 8
-  (4, 1, 1, 12, 1, '10', 'A', 13),   -- class_master_id 12 = Class 10
+  (1, 1, 1, 7,  1, '5',  'A'),   -- class_master_id 7 = Class 5, division_master_id 1 = A
+  (2, 1, 1, 7,  2, '5',  'B'),   -- division_master_id 2 = B
+  (3, 1, 1, 10, 1, '8',  'A'),   -- class_master_id 10 = Class 8
+  (4, 1, 1, 12, 1, '10', 'A'),   -- class_master_id 12 = Class 10
 
   -- Sunrise classes  (school_academic_year_id=3 → 2024-25 for school 2)
-  (5, 2, 3, 8,  1, '6',  'A', 20),   -- class_master_id 8 = Class 6
-  (6, 2, 3, 11, 1, '9',  'A', 21)    -- class_master_id 11 = Class 9
+  (5, 2, 3, 8,  1, '6',  'A'),   -- class_master_id 8 = Class 6
+  (6, 2, 3, 11, 1, '9',  'A')    -- class_master_id 11 = Class 9
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.school_classes', 'id'), MAX(id), TRUE) FROM public.school_classes;
