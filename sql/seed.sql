@@ -149,141 +149,147 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.subject_masters', 'id'), MAX(id), TRUE) FROM public.subject_masters;
 
+-- ==========================
+-- DIVISION MASTERS (global)
+-- ==========================
+
+INSERT INTO division_masters (id, name, code, description)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 'A', 'DIV_A', 'Division A'),
+  (2, 'B', 'DIV_B', 'Division B'),
+  (3, 'C', 'DIV_C', 'Division C'),
+  (4, 'D', 'DIV_D', 'Division D')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('public.division_masters', 'id'), MAX(id), TRUE) FROM public.division_masters;
+
 -- =======================
 -- SCHOOL CLASSES
 -- =======================
 
-INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, name, division, teacher_id)
+INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division, teacher_id)
 OVERRIDING SYSTEM VALUE VALUES
   -- Greenwood classes  (school_academic_year_id=1 → 2024-25 for school 1)
-  (1, 1, 1, 7,  '5',  'A', 10),   -- class_master_id 7 = Class 5
-  (2, 1, 1, 7,  '5',  'B', 11),
-  (3, 1, 1, 10, '8',  'A', 12),   -- class_master_id 10 = Class 8
-  (4, 1, 1, 12, '10', 'A', 13),   -- class_master_id 12 = Class 10
+  (1, 1, 1, 7,  1, '5',  'A', 10),   -- class_master_id 7 = Class 5, division_master_id 1 = A
+  (2, 1, 1, 7,  2, '5',  'B', 11),   -- division_master_id 2 = B
+  (3, 1, 1, 10, 1, '8',  'A', 12),   -- class_master_id 10 = Class 8
+  (4, 1, 1, 12, 1, '10', 'A', 13),   -- class_master_id 12 = Class 10
 
   -- Sunrise classes  (school_academic_year_id=3 → 2024-25 for school 2)
-  (5, 2, 3, 8,  '6',  'A', 20),   -- class_master_id 8 = Class 6
-  (6, 2, 3, 11, '9',  'A', 21)    -- class_master_id 11 = Class 9
+  (5, 2, 3, 8,  1, '6',  'A', 20),   -- class_master_id 8 = Class 6
+  (6, 2, 3, 11, 1, '9',  'A', 21)    -- class_master_id 11 = Class 9
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.school_classes', 'id'), MAX(id), TRUE) FROM public.school_classes;
 
 -- =======================
--- SUBJECTS
+-- SCHOOL CLASS SUBJECTS
 -- =======================
 
-INSERT INTO subjects (id, school_id, subject_master_id, name, code, class_id, teacher_id)
+INSERT INTO school_class_subjects (id, school_id, school_academic_year_id, class_id, subject_master_id)
 OVERRIDING SYSTEM VALUE VALUES
-  -- Class 5A subjects (Greenwood)
-  (1,  1, 4,  'Mathematics',          'MATH5A',  1, 10),
-  (2,  1, 1,  'English',              'ENG5A',   1, 12),
-  (3,  1, 5,  'Science',              'SCI5A',   1, 11),
-  (4,  1, 9,  'Social Studies',       'SST5A',   1, 13),
-  (24, 1, 2,  'Hindi',                'HIN5A',   1, NULL),
-  (25, 1, 16, 'Computer Science',     'CS5A',    1, NULL),
+  -- Greenwood 5A (class_id=1, say_id=1)
+  (1,  1, 1, 1, 4),   -- Mathematics
+  (2,  1, 1, 1, 1),   -- English
+  (3,  1, 1, 1, 5),   -- Science
+  (4,  1, 1, 1, 9),   -- Social Studies
+  (24, 1, 1, 1, 2),   -- Hindi
+  (25, 1, 1, 1, 16),  -- Computer Science
 
-  -- Class 5B subjects (Greenwood)
-  (5,  1, 4,  'Mathematics',          'MATH5B',  2, 11),
-  (6,  1, 1,  'English',              'ENG5B',   2, 12),
-  (7,  1, 5,  'Science',              'SCI5B',   2, 10),
-  (26, 1, 19, 'Art & Craft',          'ART5B',   2, NULL),
+  -- Greenwood 5B (class_id=2, say_id=1)
+  (5,  1, 1, 2, 4),   -- Mathematics
+  (6,  1, 1, 2, 1),   -- English
+  (7,  1, 1, 2, 5),   -- Science
+  (26, 1, 1, 2, 19),  -- Art & Craft
 
-  -- Class 8A subjects (Greenwood)
-  (8,  1, 4,  'Mathematics',          'MATH8A',  3, 10),
-  (9,  1, 6,  'Physics',              'PHY8A',   3, 11),
-  (10, 1, 7,  'Chemistry',            'CHEM8A',  3, 12),
-  (11, 1, 8,  'Biology',              'BIO8A',   3, 13),
-  (12, 1, 21, 'English Literature',   'ENGLIT8', 3, 12),
-  (27, 1, 18, 'Physical Education',   'PE8A',    3, NULL),
+  -- Greenwood 8A (class_id=3, say_id=1)
+  (8,  1, 1, 3, 4),   -- Mathematics
+  (9,  1, 1, 3, 6),   -- Physics
+  (10, 1, 1, 3, 7),   -- Chemistry
+  (11, 1, 1, 3, 8),   -- Biology
+  (12, 1, 1, 3, 21),  -- English Literature
+  (27, 1, 1, 3, 18),  -- Physical Education
 
-  -- Class 10A subjects (Greenwood)
-  (13, 1, 4,  'Mathematics',          'MATH10A', 4, 13),
-  (14, 1, 6,  'Physics',              'PHY10A',  4, 11),
-  (15, 1, 7,  'Chemistry',            'CHEM10A', 4, 12),
-  (16, 1, 16, 'Computer Science',     'CS10A',   4, 10),
-  (17, 1, 1,  'English',              'ENG10A',  4, 12),
-  (28, 1, 13, 'Economics',            'ECO10A',  4, NULL),
+  -- Greenwood 10A (class_id=4, say_id=1)
+  (13, 1, 1, 4, 4),   -- Mathematics
+  (14, 1, 1, 4, 6),   -- Physics
+  (15, 1, 1, 4, 7),   -- Chemistry
+  (16, 1, 1, 4, 16),  -- Computer Science
+  (17, 1, 1, 4, 1),   -- English
+  (28, 1, 1, 4, 13),  -- Economics
 
-  -- Sunrise Class 6A
-  (18, 2, 4,  'Mathematics',          'MATH6A',  5, 20),
-  (19, 2, 1,  'English',              'ENG6A',   5, 21),
-  (20, 2, 5,  'Science',              'SCI6A',   5, NULL),
+  -- Sunrise 6A (class_id=5, say_id=3)
+  (18, 2, 3, 5, 4),   -- Mathematics
+  (19, 2, 3, 5, 1),   -- English
+  (20, 2, 3, 5, 5),   -- Science
 
-  -- Sunrise Class 9A
-  (21, 2, 4,  'Mathematics',          'MATH9A',  6, 21),
-  (22, 2, 6,  'Physics',              'PHY9A',   6, 20),
-  (23, 2, 10, 'History',              'HIST9A',  6, NULL)
+  -- Sunrise 9A (class_id=6, say_id=3)
+  (21, 2, 3, 6, 4),   -- Mathematics
+  (22, 2, 3, 6, 6),   -- Physics
+  (23, 2, 3, 6, 10)   -- History
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('public.subjects', 'id'), MAX(id), TRUE) FROM public.subjects;
+SELECT setval(pg_get_serial_sequence('public.school_class_subjects', 'id'), MAX(id), TRUE) FROM public.school_class_subjects;
 
 -- =======================
--- CLASS SUBJECTS
+-- SCHOOL CLASS TEACHERS
 -- =======================
 
-INSERT INTO class_subjects (id, class_id, subject_id)
+INSERT INTO school_class_teachers (id, school_id, school_academic_year_id, class_id, division_master_id, teacher_id, is_primary)
 OVERRIDING SYSTEM VALUE VALUES
-  (1,  1, 1),  (2,  1, 2),  (3,  1, 3),  (4,  1, 4),  (24, 1, 24), (25, 1, 25),
-  (5,  2, 5),  (6,  2, 6),  (7,  2, 7),  (26, 2, 26),
-  (8,  3, 8),  (9,  3, 9),  (10, 3, 10), (11, 3, 11), (12, 3, 12), (27, 3, 27),
-  (13, 4, 13), (14, 4, 14), (15, 4, 15), (16, 4, 16), (17, 4, 17), (28, 4, 28),
-  (18, 5, 18), (19, 5, 19), (20, 5, 20),
-  (21, 6, 21), (22, 6, 22), (23, 6, 23)
+  (1, 1, 1, 1, 1, 10, TRUE),   -- class 5A → division_master_id 1 (A)
+  (2, 1, 1, 2, 2, 11, TRUE),   -- class 5B → division_master_id 2 (B)
+  (3, 1, 1, 3, 1, 12, TRUE),   -- class 8A → division_master_id 1 (A)
+  (4, 1, 1, 4, 1, 13, TRUE),   -- class 10A → division_master_id 1 (A)
+  (5, 2, 3, 5, 1, 20, TRUE),   -- class 6A → division_master_id 1 (A)
+  (6, 2, 3, 6, 1, 21, TRUE)    -- class 9A → division_master_id 1 (A)
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('public.class_subjects', 'id'), MAX(id), TRUE) FROM public.class_subjects;
+SELECT setval(pg_get_serial_sequence('public.school_class_teachers', 'id'), MAX(id), TRUE) FROM public.school_class_teachers;
 
 -- =======================
--- CLASS TEACHERS
+-- SCHOOL SUBJECT TEACHERS
 -- =======================
 
-INSERT INTO class_teachers (id, class_id, teacher_id, is_primary)
+INSERT INTO school_subject_teachers (id, school_id, school_academic_year_id, class_id, division_master_id, subject_master_id, teacher_id)
 OVERRIDING SYSTEM VALUE VALUES
-  (1, 1, 10, TRUE),
-  (2, 2, 11, TRUE),
-  (3, 3, 12, TRUE),
-  (4, 4, 13, TRUE),
-  (5, 5, 20, TRUE),
-  (6, 6, 21, TRUE)
+  -- Greenwood 5A (division A = 1)
+  (1,  1, 1, 1, 1, 4,  10), (2,  1, 1, 1, 1, 1,  12), (3,  1, 1, 1, 1, 5,  11), (4,  1, 1, 1, 1, 9,  13),
+  -- Greenwood 5B (division B = 2)
+  (5,  1, 1, 2, 2, 4,  11), (6,  1, 1, 2, 2, 1,  12), (7,  1, 1, 2, 2, 5,  10),
+  -- Greenwood 8A (division A = 1)
+  (8,  1, 1, 3, 1, 4,  10), (9,  1, 1, 3, 1, 6,  11), (10, 1, 1, 3, 1, 7,  12), (11, 1, 1, 3, 1, 8,  13), (12, 1, 1, 3, 1, 21, 12),
+  -- Greenwood 10A (division A = 1)
+  (13, 1, 1, 4, 1, 4,  13), (14, 1, 1, 4, 1, 6,  11), (15, 1, 1, 4, 1, 7,  12), (16, 1, 1, 4, 1, 16, 10), (17, 1, 1, 4, 1, 1,  12),
+  -- Sunrise 6A (division A = 1)
+  (18, 2, 3, 5, 1, 4,  20), (19, 2, 3, 5, 1, 1,  21),
+  -- Sunrise 9A (division A = 1)
+  (20, 2, 3, 6, 1, 4,  21), (21, 2, 3, 6, 1, 6,  20)
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('public.class_teachers', 'id'), MAX(id), TRUE) FROM public.class_teachers;
-
--- =======================
--- SUBJECT TEACHERS
--- (Only assigned subjects have records here; unassigned subjects have no subject_teachers record)
--- =======================
-
-INSERT INTO subject_teachers (id, subject_id, teacher_id, class_id)
-OVERRIDING SYSTEM VALUE VALUES
-  (1,  1,  10, 1), (2,  2,  12, 1), (3,  3,  11, 1), (4,  4,  13, 1),
-  (5,  5,  11, 2), (6,  6,  12, 2), (7,  7,  10, 2),
-  (8,  8,  10, 3), (9,  9,  11, 3), (10, 10, 12, 3), (11, 11, 13, 3), (12, 12, 12, 3),
-  (13, 13, 13, 4), (14, 14, 11, 4), (15, 15, 12, 4), (16, 16, 10, 4), (17, 17, 12, 4),
-  (18, 18, 20, 5), (19, 19, 21, 5),
-  (20, 21, 21, 6), (21, 22, 20, 6)
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval(pg_get_serial_sequence('public.subject_teachers', 'id'), MAX(id), TRUE) FROM public.subject_teachers;
+SELECT setval(pg_get_serial_sequence('public.school_subject_teachers', 'id'), MAX(id), TRUE) FROM public.school_subject_teachers;
 
 -- =======================
 -- STUDENTS
 -- =======================
 
-INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
+INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, division_master_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
 OVERRIDING SYSTEM VALUE VALUES
   -- Class 5A Greenwood  (say_id=1 → 2024-25 school 1)
-  (101, 1, 1, 100, 1, '5A-001', '2014-03-15', 'male',   'B+',  '22 Park St, Mumbai',    'Suresh Mehta',  '9601111001', '2020-06-01'),
-  (102, 1, 1, 101, 1, '5A-002', '2014-07-22', 'female', 'O+',  '8 Garden Rd, Mumbai',   'Ramesh Shah',   '9601111002', '2020-06-01'),
-  (103, 1, 1, 102, 2, '5B-001', '2014-01-10', 'male',   'A+',  '15 Hill Top, Mumbai',   'Mohan Gupta',   '9601111003', '2020-06-01'),
-  (104, 1, 1, 103, 3, '8A-001', '2010-11-05', 'female', 'AB+', '3 River Ave, Mumbai',   'Kiran Iyer',    '9601111004', '2018-06-01'),
-  (105, 1, 1, 104, 4, 'X-001',  '2008-08-18', 'male',   'B-',  '10 Lake Rd, Mumbai',    'Nilesh Joshi',  '9601111005', '2016-06-01'),
-  (106, 1, 1, 105, 4, 'X-002',  '2009-02-25', 'female', 'O-',  '55 Crown Rd, Mumbai',   'Ganesh Pillai', '9601111006', '2016-06-01'),
+  (101, 1, 1, 100, 1, 1, '5A-001', '2014-03-15', 'male',   'B+',  '22 Park St, Mumbai',    'Suresh Mehta',  '9601111001', '2020-06-01'),
+  (102, 1, 1, 101, 1, 1, '5A-002', '2014-07-22', 'female', 'O+',  '8 Garden Rd, Mumbai',   'Ramesh Shah',   '9601111002', '2020-06-01'),
+  -- Class 5B Greenwood  (division B = 2)
+  (103, 1, 1, 102, 2, 2, '5B-001', '2014-01-10', 'male',   'A+',  '15 Hill Top, Mumbai',   'Mohan Gupta',   '9601111003', '2020-06-01'),
+  -- Class 8A Greenwood  (division A = 1)
+  (104, 1, 1, 103, 3, 1, '8A-001', '2010-11-05', 'female', 'AB+', '3 River Ave, Mumbai',   'Kiran Iyer',    '9601111004', '2018-06-01'),
+  -- Class 10A Greenwood  (division A = 1)
+  (105, 1, 1, 104, 4, 1, 'X-001',  '2008-08-18', 'male',   'B-',  '10 Lake Rd, Mumbai',    'Nilesh Joshi',  '9601111005', '2016-06-01'),
+  (106, 1, 1, 105, 4, 1, 'X-002',  '2009-02-25', 'female', 'O-',  '55 Crown Rd, Mumbai',   'Ganesh Pillai', '9601111006', '2016-06-01'),
 
   -- Sunrise students  (say_id=3 → 2024-25 school 2)
-  (201, 2, 3, 110, 5, '6A-001', '2013-05-12', 'male',   'A+',  '7 Sea View, Delhi',     'Rajiv Menon',   '9501111001', '2021-04-01'),
-  (202, 2, 3, 111, 5, '6A-002', '2013-09-30', 'female', 'B+',  '19 Green Park, Delhi',  'Tapas Das',     '9501111002', '2021-04-01'),
-  (203, 2, 3, 112, 6, '9A-001', '2010-12-01', 'male',   'O+',  '33 Connaught Pl, Delhi','Ashok Roy',     '9501111003', '2019-04-01')
+  (201, 2, 3, 110, 5, 1, '6A-001', '2013-05-12', 'male',   'A+',  '7 Sea View, Delhi',     'Rajiv Menon',   '9501111001', '2021-04-01'),
+  (202, 2, 3, 111, 5, 1, '6A-002', '2013-09-30', 'female', 'B+',  '19 Green Park, Delhi',  'Tapas Das',     '9501111002', '2021-04-01'),
+  (203, 2, 3, 112, 6, 1, '9A-001', '2010-12-01', 'male',   'O+',  '33 Connaught Pl, Delhi','Ashok Roy',     '9501111003', '2019-04-01')
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.students', 'id'), MAX(id), TRUE) FROM public.students;
@@ -384,88 +390,88 @@ ON CONFLICT DO NOTHING;
 -- MARKS (Final exam scores)
 -- =======================
 
-INSERT INTO marks (school_id, student_id, subject_id, exam_type, score, max_score, exam_date) VALUES
+INSERT INTO marks (school_id, student_id, subject_master_id, exam_type, score, max_score, exam_date) VALUES
   -- Student 101 (Class 5A)
-  (1, 101, 1,  'final', 42, 50, '2024-03-20'),
-  (1, 101, 2,  'final', 45, 50, '2024-03-21'),
-  (1, 101, 3,  'final', 38, 50, '2024-03-22'),
-  (1, 101, 4,  'final', 40, 50, '2024-03-23'),
+  (1, 101, 4,  'final', 42, 50, '2024-03-20'),
+  (1, 101, 1,  'final', 45, 50, '2024-03-21'),
+  (1, 101, 5,  'final', 38, 50, '2024-03-22'),
+  (1, 101, 9,  'final', 40, 50, '2024-03-23'),
 
   -- Student 102 (Class 5A)
-  (1, 102, 1,  'final', 35, 50, '2024-03-20'),
-  (1, 102, 2,  'final', 47, 50, '2024-03-21'),
-  (1, 102, 3,  'final', 43, 50, '2024-03-22'),
-  (1, 102, 4,  'final', 39, 50, '2024-03-23'),
+  (1, 102, 4,  'final', 35, 50, '2024-03-20'),
+  (1, 102, 1,  'final', 47, 50, '2024-03-21'),
+  (1, 102, 5,  'final', 43, 50, '2024-03-22'),
+  (1, 102, 9,  'final', 39, 50, '2024-03-23'),
 
   -- Student 104 (Class 8A)
-  (1, 104, 8,  'final', 44, 50, '2024-03-18'),
-  (1, 104, 9,  'final', 40, 50, '2024-03-19'),
-  (1, 104, 10, 'final', 37, 50, '2024-03-20'),
-  (1, 104, 11, 'final', 46, 50, '2024-03-21'),
+  (1, 104, 4,  'final', 44, 50, '2024-03-18'),
+  (1, 104, 6,  'final', 40, 50, '2024-03-19'),
+  (1, 104, 7,  'final', 37, 50, '2024-03-20'),
+  (1, 104, 8,  'final', 46, 50, '2024-03-21'),
 
   -- Student 105 (Class 10A)
-  (1, 105, 13, 'final', 48, 50, '2024-03-15'),
-  (1, 105, 14, 'final', 41, 50, '2024-03-16'),
-  (1, 105, 15, 'final', 43, 50, '2024-03-17'),
+  (1, 105, 4,  'final', 48, 50, '2024-03-15'),
+  (1, 105, 6,  'final', 41, 50, '2024-03-16'),
+  (1, 105, 7,  'final', 43, 50, '2024-03-17'),
   (1, 105, 16, 'final', 49, 50, '2024-03-18'),
 
   -- Sunrise students
-  (2, 201, 18, 'final', 38, 50, '2024-03-20'),
-  (2, 201, 19, 'final', 44, 50, '2024-03-21'),
-  (2, 203, 21, 'final', 45, 50, '2024-03-19'),
-  (2, 203, 22, 'final', 42, 50, '2024-03-20')
+  (2, 201, 4,  'final', 38, 50, '2024-03-20'),
+  (2, 201, 1,  'final', 44, 50, '2024-03-21'),
+  (2, 203, 4,  'final', 45, 50, '2024-03-19'),
+  (2, 203, 6,  'final', 42, 50, '2024-03-20')
 ON CONFLICT DO NOTHING;
 
 -- =======================
 -- TIMETABLES
 -- =======================
 
-INSERT INTO timetables (school_id, class_id, subject_id, teacher_id, day_of_week, start_time, end_time, classroom) VALUES
+INSERT INTO timetables (school_id, class_id, subject_master_id, teacher_id, day_of_week, start_time, end_time, classroom) VALUES
   -- Class 5A Greenwood — Monday
-  (1, 1, 1, 10, 'monday',    '08:30:00', '09:30:00', 'Room 101'),
-  (1, 1, 2, 10, 'monday',    '09:30:00', '10:30:00', 'Room 101'),
-  (1, 1, 3, 10, 'monday',    '11:00:00', '12:00:00', 'Room 101'),
-  (1, 1, 4, 10, 'monday',    '12:00:00', '13:00:00', 'Room 101'),
+  (1, 1, 4, 10, 'monday',    '08:30:00', '09:30:00', 'Room 101'),
+  (1, 1, 1, 10, 'monday',    '09:30:00', '10:30:00', 'Room 101'),
+  (1, 1, 5, 10, 'monday',    '11:00:00', '12:00:00', 'Room 101'),
+  (1, 1, 9, 10, 'monday',    '12:00:00', '13:00:00', 'Room 101'),
   -- Class 5A Greenwood — Tuesday
-  (1, 1, 2, 10, 'tuesday',   '08:30:00', '09:30:00', 'Room 101'),
-  (1, 1, 1, 10, 'tuesday',   '09:30:00', '10:30:00', 'Room 101'),
-  (1, 1, 4, 10, 'tuesday',   '11:00:00', '12:00:00', 'Room 101'),
-  (1, 1, 3, 10, 'tuesday',   '12:00:00', '13:00:00', 'Room 101'),
+  (1, 1, 1, 10, 'tuesday',   '08:30:00', '09:30:00', 'Room 101'),
+  (1, 1, 4, 10, 'tuesday',   '09:30:00', '10:30:00', 'Room 101'),
+  (1, 1, 9, 10, 'tuesday',   '11:00:00', '12:00:00', 'Room 101'),
+  (1, 1, 5, 10, 'tuesday',   '12:00:00', '13:00:00', 'Room 101'),
 
   -- Class 10A Greenwood — Monday
-  (1, 4, 13, 13, 'monday',   '08:30:00', '09:30:00', 'Room 301'),
-  (1, 4, 14, 13, 'monday',   '09:30:00', '10:30:00', 'Lab 1'),
-  (1, 4, 15, 13, 'monday',   '11:00:00', '12:00:00', 'Lab 2'),
+  (1, 4, 4,  13, 'monday',   '08:30:00', '09:30:00', 'Room 301'),
+  (1, 4, 6,  13, 'monday',   '09:30:00', '10:30:00', 'Lab 1'),
+  (1, 4, 7,  13, 'monday',   '11:00:00', '12:00:00', 'Lab 2'),
   (1, 4, 16, 13, 'monday',   '12:00:00', '13:00:00', 'Computer Lab'),
 
   -- Sunrise Class 6A — Monday
-  (2, 5, 18, 20, 'monday',   '08:30:00', '09:30:00', 'Room 201'),
-  (2, 5, 19, 20, 'monday',   '09:30:00', '10:30:00', 'Room 201'),
-  (2, 5, 20, 20, 'monday',   '11:00:00', '12:00:00', 'Room 201')
+  (2, 5, 4,  20, 'monday',   '08:30:00', '09:30:00', 'Room 201'),
+  (2, 5, 1,  20, 'monday',   '09:30:00', '10:30:00', 'Room 201'),
+  (2, 5, 5,  20, 'monday',   '11:00:00', '12:00:00', 'Room 201')
 ON CONFLICT (class_id, day_of_week, start_time) DO NOTHING;
 
 -- =======================
 -- HOMEWORK
 -- =======================
 
-INSERT INTO homework (school_id, class_id, subject_id, teacher_id, title, description, due_date) VALUES
-  (1, 1, 1, 10, 'Algebraic Expressions',
+INSERT INTO homework (school_id, class_id, subject_master_id, teacher_id, title, description, due_date) VALUES
+  (1, 1, 4, 10, 'Algebraic Expressions',
    'Solve exercises 1–15 on page 82 of your Mathematics textbook. Show all working clearly.',
    CURRENT_DATE + INTERVAL '3 days'),
 
-  (1, 1, 2, 10, 'Creative Writing',
+  (1, 1, 1, 10, 'Creative Writing',
    'Write a short story (minimum 300 words) on the topic: "A Day Without Technology".',
    CURRENT_DATE + INTERVAL '5 days'),
 
-  (1, 3, 8, 12, 'Linear Equations Practice',
+  (1, 3, 4, 12, 'Linear Equations Practice',
    'Complete worksheet 4 on simultaneous linear equations. Attempt all three methods.',
    CURRENT_DATE + INTERVAL '4 days'),
 
-  (1, 4, 14, 13, 'Laws of Motion Problems',
+  (1, 4, 6, 13, 'Laws of Motion Problems',
    'Solve Newton''s Laws problems from Chapter 5, questions 10–20.',
    CURRENT_DATE + INTERVAL '7 days'),
 
-  (2, 5, 18, 20, 'Fractions Worksheet',
+  (2, 5, 4, 20, 'Fractions Worksheet',
    'Complete problems 1–20 on addition and subtraction of fractions from page 55.',
    CURRENT_DATE + INTERVAL '3 days')
 ON CONFLICT DO NOTHING;
@@ -504,15 +510,15 @@ ON CONFLICT DO NOTHING;
 -- SYNC ALL SEQUENCES
 -- =======================
 
-SELECT setval(pg_get_serial_sequence('public.attendance',       'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.attendance;
-SELECT setval(pg_get_serial_sequence('public.fees',            'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.fees;
-SELECT setval(pg_get_serial_sequence('public.marks',           'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.marks;
-SELECT setval(pg_get_serial_sequence('public.timetables',      'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.timetables;
-SELECT setval(pg_get_serial_sequence('public.homework',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.homework;
-SELECT setval(pg_get_serial_sequence('public.notices',         'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.notices;
-SELECT setval(pg_get_serial_sequence('public.salary_records',  'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.salary_records;
-SELECT setval(pg_get_serial_sequence('public.academic_years',  'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.academic_years;
-SELECT setval(pg_get_serial_sequence('public.class_subjects',  'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.class_subjects;
-SELECT setval(pg_get_serial_sequence('public.school_classes',  'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_classes;
-SELECT setval(pg_get_serial_sequence('public.class_teachers',   'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.class_teachers;
-SELECT setval(pg_get_serial_sequence('public.subject_teachers', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.subject_teachers;
+SELECT setval(pg_get_serial_sequence('public.attendance',            'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.attendance;
+SELECT setval(pg_get_serial_sequence('public.fees',                  'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.fees;
+SELECT setval(pg_get_serial_sequence('public.marks',                 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.marks;
+SELECT setval(pg_get_serial_sequence('public.timetables',            'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.timetables;
+SELECT setval(pg_get_serial_sequence('public.homework',              'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.homework;
+SELECT setval(pg_get_serial_sequence('public.notices',               'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.notices;
+SELECT setval(pg_get_serial_sequence('public.salary_records',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.salary_records;
+SELECT setval(pg_get_serial_sequence('public.academic_years',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.academic_years;
+SELECT setval(pg_get_serial_sequence('public.school_class_subjects', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_subjects;
+SELECT setval(pg_get_serial_sequence('public.school_classes',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_classes;
+SELECT setval(pg_get_serial_sequence('public.school_class_teachers', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_teachers;
+SELECT setval(pg_get_serial_sequence('public.school_subject_teachers','id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_subject_teachers;

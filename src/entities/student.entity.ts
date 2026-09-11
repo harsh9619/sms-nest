@@ -11,6 +11,7 @@ import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { User } from "./user.entity.js";
 import { Class } from "./class.entity.js";
+import { DivisionMaster } from "./division-master.entity.js";
 
 @Entity("students")
 export class Student {
@@ -44,6 +45,13 @@ export class Student {
   @ManyToOne(() => Class, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "class_id" })
   class: Class;
+
+  @Column({ type: "int", nullable: true })
+  division_master_id: number;
+
+  @ManyToOne(() => DivisionMaster, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "division_master_id" })
+  division_master: DivisionMaster;
 
   @Column({ type: "varchar", length: 20, nullable: true })
   roll_no: string;

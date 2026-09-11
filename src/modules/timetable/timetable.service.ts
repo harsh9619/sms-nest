@@ -14,8 +14,8 @@ export class TimetableService {
     const qb = this.ttRepo
       .createQueryBuilder("tt")
       .innerJoinAndSelect("tt.class", "c")
-      .innerJoinAndSelect("tt.subject", "sub")
-      .leftJoinAndSelect("sub.teacher", "t");
+      .innerJoinAndSelect("tt.subject_master", "sub")
+      .leftJoinAndSelect("tt.teacher", "t");
 
     if (schoolId) {
       qb.andWhere("tt.school_id = :schoolId", { schoolId });
@@ -24,7 +24,7 @@ export class TimetableService {
       qb.andWhere("tt.class_id = :classId", { classId });
     }
     if (teacherId) {
-      qb.andWhere("sub.teacher_id = :teacherId", { teacherId });
+      qb.andWhere("tt.teacher_id = :teacherId", { teacherId });
     }
 
     qb.orderBy("tt.day_of_week", "ASC").addOrderBy("tt.start_time", "ASC");
@@ -34,10 +34,10 @@ export class TimetableService {
       id: String(s.id),
       classId: String(s.class_id),
       className: s.class ? `${s.class.name}-${s.class.division || ""}` : "",
-      subjectId: String(s.subject_id),
-      subjectName: s.subject ? s.subject.name : "",
-      teacherId: s.subject?.teacher_id ? String(s.subject.teacher_id) : null,
-      teacherName: s.subject?.teacher ? s.subject.teacher.name : "Unassigned",
+      subjectId: String(s.subject_master_id),
+      subjectName: s.subject_master ? s.subject_master.name : "",
+      teacherId: s.teacher_id ? String(s.teacher_id) : null,
+      teacherName: s.teacher ? s.teacher.name : "Unassigned",
       dayOfWeek: s.day_of_week,
       startTime: s.start_time,
       endTime: s.end_time,
@@ -47,12 +47,13 @@ export class TimetableService {
   }
 
   async createTimetable(schoolId: number, data: any) {
-    const { classId, subjectId, dayOfWeek, startTime, endTime, classroom } = data;
+    const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
 
     const newSlot = this.ttRepo.create({
       school_id: schoolId,
       class_id: classId,
-      subject_id: subjectId,
+      subject_master_id: subjectId,
+      teacher_id: teacherId || null,
       day_of_week: dayOfWeek.toLowerCase(),
       start_time: startTime,
       end_time: endTime,
@@ -65,11 +66,12 @@ export class TimetableService {
   }
 
   async updateTimetable(timetableId: number, data: any) {
-    const { classId, subjectId, dayOfWeek, startTime, endTime, classroom } = data;
+    const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
 
     await this.ttRepo.update(timetableId, {
       class_id: classId,
-      subject_id: subjectId,
+      subject_master_id: subjectId,
+      teacher_id: teacherId || null,
       day_of_week: dayOfWeek.toLowerCase(),
       start_time: startTime,
       end_time: endTime,

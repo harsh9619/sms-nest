@@ -10,7 +10,7 @@ import {
 import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { Class } from "./class.entity.js";
-import { Subject } from "./subject.entity.js";
+import { SubjectMaster } from "./subject-master.entity.js";
 import { User } from "./user.entity.js";
 
 @Entity("homework")
@@ -40,11 +40,19 @@ export class Homework {
   class: Class;
 
   @Column({ type: "int" })
-  subject_id: number;
+  subject_master_id: number;
 
-  @ManyToOne(() => Subject, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "subject_id" })
-  subject: Subject;
+  @ManyToOne(() => SubjectMaster, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "subject_master_id" })
+  subject_master: SubjectMaster;
+
+  get subject(): SubjectMaster {
+    return this.subject_master;
+  }
+
+  get subject_id(): number {
+    return this.subject_master_id;
+  }
 
   @Column({ type: "int", nullable: true })
   teacher_id: number;

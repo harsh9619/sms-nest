@@ -34,7 +34,10 @@ export class TeacherService {
       rawTeachers.map(async (t) => {
         const teacherId = t.id;
         const subRes = await this.userRepo.query(
-          `SELECT string_agg(sub.name, ', ') AS subjects FROM subjects sub WHERE sub.teacher_id = $1`,
+          `SELECT string_agg(DISTINCT sm.name, ', ') AS subjects
+           FROM school_subject_teachers sst
+           JOIN subject_masters sm ON sm.id = sst.subject_master_id
+           WHERE sst.teacher_id = $1`,
           [teacherId]
         );
         const salRes = await this.userRepo.query(

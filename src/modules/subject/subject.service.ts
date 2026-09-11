@@ -1,48 +1,60 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In, DataSource } from "typeorm";
-import { Subject } from "../../entities/subject.entity.js";
 import { SubjectMaster } from "../../entities/subject-master.entity.js";
+import { SchoolClassSubject } from "../../entities/class-subject.entity.js";
+import { SchoolSubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { User } from "../../entities/user.entity.js";
 
 @Injectable()
 export class SubjectService {
   constructor(
-    @InjectRepository(Subject)
-    private subjectRepo: Repository<Subject>,
     @InjectRepository(SubjectMaster)
     private subjectMasterRepo: Repository<SubjectMaster>,
+    @InjectRepository(SchoolClassSubject)
+    private schoolClassSubjectRepo: Repository<SchoolClassSubject>,
+    @InjectRepository(SchoolSubjectTeacher)
+    private schoolSubjectTeacherRepo: Repository<SchoolSubjectTeacher>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private dataSource: DataSource
   ) {}
 
   async getSubjects(schoolId: number | null, classId: number | null) {
-    const qb = this.subjectRepo
-      .createQueryBuilder("sub")
-      .leftJoinAndSelect("sub.teacher", "t")
-      .leftJoinAndSelect("sub.class", "c");
+    const qb = this.schoolClassSubjectRepo
+      .createQueryBuilder("scs")
+      .leftJoinAndSelect("scs.subject_master", "sm")
+      .leftJoinAndSelect("scs.class", "c");
 
     if (schoolId) {
-      qb.andWhere("sub.school_id = :schoolId", { schoolId });
+      qb.andWhere("scs.school_id = :schoolId", { schoolId });
     }
     if (classId) {
-      qb.andWhere("sub.class_id = :classId", { classId });
+      qb.andWhere("scs.class_id = :classId", { classId });
     }
 
-    qb.orderBy("sub.name", "ASC");
+    qb.orderBy("sm.name", "ASC");
 
     const list = await qb.getMany();
-    return list.map((s) => ({
-      id: String(s.id),
-      name: s.name,
-      code: s.code,
-      classId: s.class_id ? String(s.class_id) : null,
-      teacherId: s.teacher_id ? String(s.teacher_id) : null,
-      teacherName: s.teacher ? s.teacher.name : null,
-      schoolId: String(s.school_id),
-      subjectMasterId: s.subject_master_id ? String(s.subject_master_id) : null,
-    }));
+    return Promise.all(
+      list.map(async (scs) => {
+        const teacherRes = await this.schoolSubjectTeacherRepo.findOne({
+          where: { class_id: scs.class_id, subject_master_id: scs.subject_master_id },
+          relations: { teacher: true },
+        });
+
+        return {
+          id: String(scs.id),
+          name: scs.subject_master ? scs.subject_master.name : "",
+          code: scs.subject_master ? scs.subject_master.code : "",
+          classId: scs.class_id ? String(scs.class_id) : null,
+          teacherId: teacherRes?.teacher_id ? String(teacherRes.teacher_id) : null,
+          teacherName: teacherRes?.teacher ? teacherRes.teacher.name : null,
+          schoolId: String(scs.school_id),
+          subjectMasterId: String(scs.subject_master_id),
+        };
+      })
+    );
   }
 
   async getSubjectMasters() {
@@ -53,74 +65,50 @@ export class SubjectService {
     return this.getSubjects(schoolId, classId);
   }
 
-  async updateSubjectTeacher(subjectId: number, teacherId: number | null) {
-    const sub = await this.subjectRepo.findOne({ where: { id: subjectId } });
-    if (!sub) return null;
+  async updateSubjectTeacher(schoolClassSubjectId: number, teacherId: number | null) {
+    const scs = await this.schoolClassSubjectRepo.findOne({ where: { id: schoolClassSubjectId } });
+    if (!scs) return null;
 
-    sub.teacher_id = teacherId;
-    await this.subjectRepo.save(sub);
-
-    if (teacherId && sub.class_id) {
-      await this.dataSource.query(
-        `INSERT INTO subject_teachers (subject_id, teacher_id, class_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT DO NOTHING`,
-        [subjectId, teacherId, sub.class_id]
-      );
+    if (teacherId) {
+      let sst = await this.schoolSubjectTeacherRepo.findOne({
+        where: { class_id: scs.class_id, subject_master_id: scs.subject_master_id },
+      });
+      if (sst) {
+        sst.teacher_id = teacherId;
+        await this.schoolSubjectTeacherRepo.save(sst);
+      } else {
+        sst = this.schoolSubjectTeacherRepo.create({
+          school_id: scs.school_id,
+          school_academic_year_id: scs.school_academic_year_id,
+          class_id: scs.class_id,
+          subject_master_id: scs.subject_master_id,
+          teacher_id: teacherId,
+        });
+        await this.schoolSubjectTeacherRepo.save(sst);
+      }
+    } else {
+      await this.schoolSubjectTeacherRepo.delete({
+        class_id: scs.class_id,
+        subject_master_id: scs.subject_master_id,
+      });
     }
 
-    return {
-      id: String(sub.id),
-      name: sub.name,
-      code: sub.code,
-      classId: sub.class_id ? String(sub.class_id) : null,
-      teacherId: sub.teacher_id ? String(sub.teacher_id) : null,
-      schoolId: String(sub.school_id),
-      subjectMasterId: sub.subject_master_id ? String(sub.subject_master_id) : null,
-    };
+    return this.getSubjects(scs.school_id, scs.class_id);
   }
 
   async syncClassSubjects(schoolId: number, classId: number, masterSubjectIds: number[]) {
-    const selectedMasters = await this.subjectMasterRepo.find({
-      where: { id: In(masterSubjectIds) },
-    });
+    await this.schoolClassSubjectRepo.delete({ school_id: schoolId, class_id: classId });
 
-    const existingSubjects = await this.subjectRepo.find({
-      where: { school_id: schoolId, class_id: classId },
-    });
-
-    const existingMasterIds = new Set(
-      existingSubjects.map((s) => s.subject_master_id).filter(Boolean)
-    );
-    const newMasterIds = new Set(masterSubjectIds);
-
-    for (const existing of existingSubjects) {
-      if (existing.subject_master_id && !newMasterIds.has(existing.subject_master_id)) {
-        await this.dataSource.query(
-          "DELETE FROM class_subjects WHERE class_id = $1 AND subject_id = $2",
-          [classId, existing.id]
-        );
-        await this.subjectRepo.delete(existing.id);
-      }
-    }
-
-    for (const master of selectedMasters) {
-      if (!existingMasterIds.has(master.id)) {
-        const newSub = this.subjectRepo.create({
-          school_id: schoolId,
-          class_id: classId,
-          subject_master_id: master.id,
-          name: master.name,
-          code: master.code,
-        });
-        const saved = await this.subjectRepo.save(newSub);
-        await this.dataSource.query(
-          "INSERT INTO class_subjects (class_id, subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-          [classId, saved.id]
-        );
-      }
+    for (const masterId of masterSubjectIds) {
+      const newScs = this.schoolClassSubjectRepo.create({
+        school_id: schoolId,
+        class_id: classId,
+        subject_master_id: masterId,
+      });
+      await this.schoolClassSubjectRepo.save(newScs);
     }
 
     return this.getSubjects(schoolId, classId);
   }
 }
+

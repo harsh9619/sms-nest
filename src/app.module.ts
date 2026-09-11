@@ -25,6 +25,7 @@ import { SchoolClass } from "./entities/school-class.entity.js";
 import { ClassSubject } from "./entities/class-subject.entity.js";
 import { ClassTeacher } from "./entities/class-teacher.entity.js";
 import { SubjectTeacher } from "./entities/subject-teacher.entity.js";
+import { DivisionMaster } from "./entities/division-master.entity.js";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { SchoolModule } from "./modules/school/school.module.js";
@@ -82,6 +83,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               ClassSubject,
               ClassTeacher,
               SubjectTeacher,
+              DivisionMaster,
             ],
             synchronize: false,
             extra: {
@@ -122,6 +124,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             ClassSubject,
             ClassTeacher,
             SubjectTeacher,
+            DivisionMaster,
           ],
           synchronize: false,
           extra: {

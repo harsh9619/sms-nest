@@ -83,12 +83,19 @@ async function ensureStudentExists(appQuery: any, studentId: string, name: strin
   );
   const classId = classRes.rows[0]?.id || null;
 
+  // Resolve division_master_id from section name
+  const divisionName = (sectionName || "").toUpperCase();
+  const dmRes = await appQuery(
+    `SELECT id FROM division_masters WHERE name = $1 LIMIT 1`, [divisionName]
+  );
+  const divisionMasterId = dmRes.rows[0]?.id || null;
+
   await appQuery(
-    `INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, roll_no, gender, admission_date)
+    `INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, division_master_id, roll_no, gender, admission_date)
      OVERRIDING SYSTEM VALUE
-     VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_DATE)
      ON CONFLICT (id) DO NOTHING`,
-    [studentUuid, schoolUuid, sayId, userUuid, classId, rollNumber || studentId, "other"]
+    [studentUuid, schoolUuid, sayId, userUuid, classId, divisionMasterId, rollNumber || studentId, "other"]
   );
 }
 
@@ -461,6 +468,28 @@ async function initializeDatabase() {
       console.log("✅ subject_masters seeded.");
     }
 
+    // --- Seed Division Masters (global lookup table) ---
+    if (await isTableEmpty("division_masters")) {
+      console.log("⏳ Seeding division_masters...");
+      const divisionMasters = [
+        { id: 1, name: "A", code: "DIV_A", description: "Division A" },
+        { id: 2, name: "B", code: "DIV_B", description: "Division B" },
+        { id: 3, name: "C", code: "DIV_C", description: "Division C" },
+        { id: 4, name: "D", code: "DIV_D", description: "Division D" },
+        { id: 5, name: "E", code: "DIV_E", description: "Division E" },
+        { id: 6, name: "F", code: "DIV_F", description: "Division F" },
+      ];
+      for (const dm of divisionMasters) {
+        await appQuery(
+          `INSERT INTO division_masters (id, name, code, description)
+           OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO NOTHING`,
+          [dm.id, dm.name, dm.code, dm.description]
+        );
+      }
+      console.log("✅ division_masters seeded.");
+    }
+
     // --- Migrate Classes & Class Subjects ---
     if (data.classes && (await isTableEmpty("school_classes"))) {
       console.log(`⏳ Seeding ${data.classes.length} classes and subjects...`);
@@ -476,33 +505,41 @@ async function initializeDatabase() {
         );
         const classMasterId = cmRes.rows[0]?.id || null;
 
+        // Look up division_master_id by section/division name (e.g. 'A')
+        const divisionName = (c.section || c.division || "").toUpperCase();
+        const dmRes = await appQuery(
+          `SELECT id FROM division_masters WHERE name = $1 LIMIT 1`, [divisionName]
+        );
+        const divisionMasterId = dmRes.rows[0]?.id || null;
+
         const classId = toUUID(c.id);
         const teacherId = c.teacherId ? toUUID(c.teacherId) : null;
 
         // Populate school_classes
         await appQuery(
-          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, name, division, teacher_id)
+          `INSERT INTO school_classes (id, school_id, school_academic_year_id, class_master_id, division_master_id, name, division, teacher_id)
            OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (id) DO NOTHING`,
           [
             classId,
             schoolId,
             sayId,
             classMasterId,
+            divisionMasterId,
             c.name,
             c.section || c.division,
             teacherId,
           ]
         );
 
-        // Populate class_teachers
+        // Populate school_class_teachers
         if (teacherId) {
           await appQuery(
-            `INSERT INTO class_teachers (class_id, teacher_id, is_primary)
-             VALUES ($1, $2, TRUE)
+            `INSERT INTO school_class_teachers (school_id, school_academic_year_id, class_id, division_master_id, teacher_id, is_primary)
+             VALUES ($1, $2, $3, $4, $5, TRUE)
              ON CONFLICT DO NOTHING`,
-            [classId, teacherId]
+            [schoolId, sayId, classId, divisionMasterId, teacherId]
           );
         }
 
@@ -513,45 +550,30 @@ async function initializeDatabase() {
               `SELECT id FROM subject_masters WHERE name = $1 LIMIT 1`, [sub]
             );
             const subjectMasterId = smRes.rows[0]?.id || null;
-            const subjectId = toUUID(c.id + "_" + sub);
 
-            await appQuery(
-              `INSERT INTO subjects (id, school_id, subject_master_id, name, code, class_id, teacher_id)
-               OVERRIDING SYSTEM VALUE
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               ON CONFLICT (id) DO NOTHING`,
-              [
-                subjectId,
-                schoolId,
-                subjectMasterId,
-                sub,
-                sub.toUpperCase(),
-                classId,
-                teacherId,
-              ]
-            );
-
-            // Populate class_subjects
-            await appQuery(
-              `INSERT INTO class_subjects (class_id, subject_id)
-               VALUES ($1, $2)
-               ON CONFLICT DO NOTHING`,
-              [classId, subjectId]
-            );
-
-            // Populate subject_teachers if teacher assigned
-            if (teacherId) {
+            if (subjectMasterId) {
+              // Populate school_class_subjects
               await appQuery(
-                `INSERT INTO subject_teachers (subject_id, teacher_id, class_id)
-                 VALUES ($1, $2, $3)
+                `INSERT INTO school_class_subjects (school_id, school_academic_year_id, class_id, subject_master_id)
+                 VALUES ($1, $2, $3, $4)
                  ON CONFLICT DO NOTHING`,
-                [subjectId, teacherId, classId]
+                [schoolId, sayId, classId, subjectMasterId]
               );
+
+              // Populate school_subject_teachers if teacher assigned
+              if (teacherId) {
+                await appQuery(
+                  `INSERT INTO school_subject_teachers (school_id, school_academic_year_id, class_id, division_master_id, subject_master_id, teacher_id)
+                   VALUES ($1, $2, $3, $4, $5, $6)
+                   ON CONFLICT DO NOTHING`,
+                  [schoolId, sayId, classId, divisionMasterId, subjectMasterId, teacherId]
+                );
+              }
             }
           }
         }
       }
-      console.log("✅ Classes, subjects, and bridge tables seeded.");
+      console.log("✅ Classes and bridge tables seeded.");
     }
 
     // --- Migrate Students & Student User accounts ---
@@ -587,6 +609,13 @@ async function initializeDatabase() {
         );
         const classId = classRes.rows[0]?.id || null;
 
+        // Lookup division_master_id from section name
+        const divisionName = (s.section || "").toUpperCase();
+        const dmRes = await appQuery(
+          `SELECT id FROM division_masters WHERE name = $1 LIMIT 1`, [divisionName]
+        );
+        const divisionMasterId = dmRes.rows[0]?.id || null;
+
         // Clean gender
         let gender: string | null = s.gender ? s.gender.toLowerCase() : null;
         if (gender !== "male" && gender !== "female" && gender !== "other") {
@@ -595,9 +624,9 @@ async function initializeDatabase() {
 
         // Insert student profile
         await appQuery(
-          `INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
+          `INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, division_master_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
            OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
            ON CONFLICT (id) DO NOTHING`,
           [
             toUUID(s.id),
@@ -605,6 +634,7 @@ async function initializeDatabase() {
             sayId,
             userUuid,
             classId,
+            divisionMasterId,
             s.rollNumber,
             s.dateOfBirth || null,
             gender,
@@ -822,16 +852,16 @@ async function initializeDatabase() {
 
         for (const [subjName, score] of Object.entries(er.marks)) {
           const subRes = await appQuery(
-            "SELECT id FROM subjects WHERE school_id = $1 AND name = $2 LIMIT 1",
-            [schoolId, subjName]
+            "SELECT id FROM subject_masters WHERE name = $1 LIMIT 1",
+            [subjName]
           );
-          const subjectId = subRes.rows[0]?.id;
-          if (subjectId) {
+          const subjectMasterId = subRes.rows[0]?.id;
+          if (subjectMasterId) {
             await appQuery(
-              `INSERT INTO marks (school_id, school_academic_year_id, student_id, subject_id, exam_type, score, max_score, exam_date)
+              `INSERT INTO marks (school_id, school_academic_year_id, student_id, subject_master_id, exam_type, score, max_score, exam_date)
                VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE)
                ON CONFLICT DO NOTHING`,
-              [schoolId, sayId, studentId, subjectId, 'final', score, 50]
+              [schoolId, sayId, studentId, subjectMasterId, 'final', score, 50]
             );
           }
         }
@@ -848,7 +878,12 @@ async function initializeDatabase() {
       const classId = classRes.rows[0]?.id;
 
       if (classId) {
-        const subRes = await appQuery("SELECT id, name FROM subjects WHERE school_id = $1 AND class_id = $2", [schoolId, classId]);
+        const subRes = await appQuery(
+          `SELECT sm.id, sm.name FROM subject_masters sm
+           JOIN school_class_subjects scs ON scs.subject_master_id = sm.id
+           WHERE scs.school_id = $1 AND scs.class_id = $2`,
+          [schoolId, classId]
+        );
         const subjects = subRes.rows;
 
         if (subjects.length > 0) {
@@ -865,7 +900,7 @@ async function initializeDatabase() {
               const subject = subjects[idx % subjects.length];
               const slot = timeSlots[idx];
               await appQuery(
-                `INSERT INTO timetables (school_id, school_academic_year_id, class_id, subject_id, day_of_week, start_time, end_time, classroom)
+                `INSERT INTO timetables (school_id, school_academic_year_id, class_id, subject_master_id, day_of_week, start_time, end_time, classroom)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  ON CONFLICT DO NOTHING`,
                 [schoolId, sayId, classId, subject.id, day, slot.start, slot.end, `Room ${100 + idx}`]
@@ -887,19 +922,24 @@ async function initializeDatabase() {
       const teacherId = classRes.rows[0]?.teacher_id;
 
       if (classId) {
-        const subRes = await appQuery("SELECT id FROM subjects WHERE school_id = $1 AND class_id = $2 LIMIT 2", [schoolId, classId]);
+        const subRes = await appQuery(
+          `SELECT sm.id FROM subject_masters sm
+           JOIN school_class_subjects scs ON scs.subject_master_id = sm.id
+           WHERE scs.school_id = $1 AND scs.class_id = $2 LIMIT 2`,
+          [schoolId, classId]
+        );
         const subjects = subRes.rows;
 
         if (subjects.length > 0) {
           await appQuery(
-            `INSERT INTO homework (school_id, school_academic_year_id, class_id, subject_id, teacher_id, title, description, due_date)
+            `INSERT INTO homework (school_id, school_academic_year_id, class_id, subject_master_id, teacher_id, title, description, due_date)
              VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE + INTERVAL '3 days')`,
             [schoolId, sayId, classId, subjects[0].id, teacherId, "Algebraic Equations", "Solve problems 1 to 10 on page 42 of your Maths textbook."]
           );
         }
         if (subjects.length > 1) {
           await appQuery(
-            `INSERT INTO homework (school_id, school_academic_year_id, class_id, subject_id, teacher_id, title, description, due_date)
+            `INSERT INTO homework (school_id, school_academic_year_id, class_id, subject_master_id, teacher_id, title, description, due_date)
              VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE + INTERVAL '5 days')`,
             [schoolId, sayId, classId, subjects[1].id, teacherId, "Water Cycle Essay", "Write a 500-word essay explaining the different stages of the water cycle with diagrams."]
           );
@@ -965,11 +1005,12 @@ async function initializeDatabase() {
 
     console.log("⏳ Syncing identity sequences...");
     const tables = [
-      "schools", "users", "school_classes", "subjects", "students", "timetables",
-      "attendance", "class_subjects", "fees", "homework", "marks",
+      "schools", "users", "school_classes", "students", "timetables",
+      "attendance", "school_class_subjects", "school_class_teachers", "school_subject_teachers",
+      "fees", "homework", "marks",
       "salary_structures", "salary_records", "notices",
       "academic_years", "school_academic_years",
-      "class_masters", "subject_masters"
+      "class_masters", "subject_masters", "division_masters"
     ];
     for (const table of tables) {
       await appQuery(`

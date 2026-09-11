@@ -10,6 +10,7 @@ import {
 import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { ClassMaster } from "./class-master.entity.js";
+import { DivisionMaster } from "./division-master.entity.js";
 import { User } from "./user.entity.js";
 
 @Entity("school_classes")
@@ -37,6 +38,13 @@ export class SchoolClass {
   @ManyToOne(() => ClassMaster, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "class_master_id" })
   class_master: ClassMaster;
+
+  @Column({ type: "int", nullable: true })
+  division_master_id: number;
+
+  @ManyToOne(() => DivisionMaster, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "division_master_id" })
+  division_master: DivisionMaster;
 
   @Column({ type: "varchar", length: 50 })
   name: string;

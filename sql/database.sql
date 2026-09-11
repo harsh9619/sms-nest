@@ -207,6 +207,20 @@ CREATE TABLE IF NOT EXISTS subject_masters (
 CREATE INDEX IF NOT EXISTS idx_subject_masters_category ON subject_masters(category);
 
 -- ============================================
+-- TABLE: division_masters  (global division reference)
+-- Canonical list of divisions/sections (e.g. A, B, C, D)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS division_masters (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50)  NOT NULL UNIQUE,   -- e.g. 'A', 'B'
+  code        VARCHAR(20)  NOT NULL UNIQUE,   -- e.g. 'DIV_A', 'DIV_B'
+  description TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+-- ============================================
 -- TABLE: school_classes
 -- Map of classes/divisions per school and academic year
 -- ============================================
@@ -216,6 +230,7 @@ CREATE TABLE IF NOT EXISTS school_classes (
   school_id               INT          NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT          REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_master_id         INT          REFERENCES class_masters(id)          ON DELETE SET NULL,
+  division_master_id      INT          REFERENCES division_masters(id)       ON DELETE SET NULL,
   name                    VARCHAR(50)  NOT NULL,
   division                VARCHAR(10),
   teacher_id              INT          REFERENCES users(id) ON DELETE SET NULL,
@@ -224,80 +239,74 @@ CREATE TABLE IF NOT EXISTS school_classes (
   UNIQUE (school_id, school_academic_year_id, name, division)
 );
 
-CREATE INDEX IF NOT EXISTS idx_school_classes_school_id       ON school_classes(school_id);
-CREATE INDEX IF NOT EXISTS idx_school_classes_class_master_id ON school_classes(class_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_classes_school_id          ON school_classes(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_classes_class_master_id    ON school_classes(class_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_classes_division_master_id ON school_classes(division_master_id);
 
 -- =======================
--- TABLE: subjects
+-- TABLE: school_class_subjects  (many-to-many bridge)
 -- =======================
 
-CREATE TABLE IF NOT EXISTS subjects (
-  id                SERIAL PRIMARY KEY,
-  school_id         INT          NOT NULL REFERENCES schools(id)        ON DELETE CASCADE,
-  subject_master_id INT          REFERENCES subject_masters(id) ON DELETE SET NULL,
-  name              VARCHAR(100) NOT NULL,
-  code              VARCHAR(20),
-  class_id          INT          REFERENCES school_classes(id)  ON DELETE SET NULL,
-  teacher_id        INT          REFERENCES users(id)           ON DELETE SET NULL,
-  created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
-  updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS school_class_subjects (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+  school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
+  subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (school_id, school_academic_year_id, class_id, subject_master_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_subjects_school_id         ON subjects(school_id);
-CREATE INDEX IF NOT EXISTS idx_subjects_class_id          ON subjects(class_id);
-CREATE INDEX IF NOT EXISTS idx_subjects_subject_master_id ON subjects(subject_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_school_id ON school_class_subjects(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_class_id  ON school_class_subjects(class_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_subj_id   ON school_class_subjects(subject_master_id);
 
 -- =======================
--- TABLE: class_subjects  (many-to-many bridge)
--- =======================
-
-CREATE TABLE IF NOT EXISTS class_subjects (
-  id         SERIAL PRIMARY KEY,
-  class_id   INT         NOT NULL REFERENCES school_classes(id) ON DELETE CASCADE,
-  subject_id INT         NOT NULL REFERENCES subjects(id)       ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (class_id, subject_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_class_subjects_class_id   ON class_subjects(class_id);
-CREATE INDEX IF NOT EXISTS idx_class_subjects_subject_id ON class_subjects(subject_id);
-
--- =======================
--- TABLE: class_teachers
+-- TABLE: school_class_teachers
 -- Mapping of class leads / class teachers
 -- =======================
 
-CREATE TABLE IF NOT EXISTS class_teachers (
-  id         SERIAL PRIMARY KEY,
-  class_id   INT         NOT NULL REFERENCES school_classes(id) ON DELETE CASCADE,
-  teacher_id INT         NOT NULL REFERENCES users(id)          ON DELETE CASCADE,
-  is_primary BOOLEAN     NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (class_id, teacher_id)
+CREATE TABLE IF NOT EXISTS school_class_teachers (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+  school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
+  division_master_id      INT         REFERENCES division_masters(id)       ON DELETE SET NULL,
+  teacher_id              INT         NOT NULL REFERENCES users(id)                ON DELETE CASCADE,
+  is_primary              BOOLEAN     NOT NULL DEFAULT TRUE,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (school_id, school_academic_year_id, class_id, teacher_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_class_teachers_class_id   ON class_teachers(class_id);
-CREATE INDEX IF NOT EXISTS idx_class_teachers_teacher_id ON class_teachers(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_teachers_school_id          ON school_class_teachers(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_teachers_class_id           ON school_class_teachers(class_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_teachers_division_master_id ON school_class_teachers(division_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_teachers_teacher_id         ON school_class_teachers(teacher_id);
 
 -- =======================
--- TABLE: subject_teachers
+-- TABLE: school_subject_teachers
 -- Mapping of subject teachers per subject / class
 -- =======================
 
-CREATE TABLE IF NOT EXISTS subject_teachers (
-  id         SERIAL PRIMARY KEY,
-  subject_id INT         NOT NULL REFERENCES subjects(id)       ON DELETE CASCADE,
-  teacher_id INT         NOT NULL REFERENCES users(id)          ON DELETE CASCADE,
-  class_id   INT         REFERENCES school_classes(id)          ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS school_subject_teachers (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+  school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
+  division_master_id      INT         REFERENCES division_masters(id)       ON DELETE SET NULL,
+  teacher_id              INT         NOT NULL REFERENCES users(id)                ON DELETE CASCADE,
+  class_id                INT         REFERENCES school_classes(id)          ON DELETE CASCADE,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_subject_teachers_subject_id ON subject_teachers(subject_id);
-CREATE INDEX IF NOT EXISTS idx_subject_teachers_teacher_id ON subject_teachers(teacher_id);
-CREATE INDEX IF NOT EXISTS idx_subject_teachers_class_id   ON subject_teachers(class_id);
+CREATE INDEX IF NOT EXISTS idx_school_subject_teachers_school_id          ON school_subject_teachers(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_subject_teachers_subj_id            ON school_subject_teachers(subject_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_subject_teachers_division_master_id ON school_subject_teachers(division_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_subject_teachers_teacher_id         ON school_subject_teachers(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_school_subject_teachers_class_id           ON school_subject_teachers(class_id);
 
 -- =======================
 -- TABLE: students
@@ -309,6 +318,7 @@ CREATE TABLE IF NOT EXISTS students (
   school_academic_year_id INT           REFERENCES school_academic_years(id) ON DELETE SET NULL,
   user_id                 INT           NOT NULL REFERENCES users(id)               ON DELETE CASCADE,
   class_id                INT           REFERENCES school_classes(id) ON DELETE SET NULL,
+  division_master_id      INT           REFERENCES division_masters(id) ON DELETE SET NULL,
   roll_no                 VARCHAR(20),
   dob                     DATE,
   gender                  gender_type,
@@ -324,6 +334,7 @@ CREATE TABLE IF NOT EXISTS students (
 CREATE INDEX IF NOT EXISTS idx_students_school_id           ON students(school_id);
 CREATE INDEX IF NOT EXISTS idx_students_school_acad_year_id ON students(school_academic_year_id);
 CREATE INDEX IF NOT EXISTS idx_students_class_id            ON students(class_id);
+CREATE INDEX IF NOT EXISTS idx_students_division_master_id ON students(division_master_id);
 CREATE INDEX IF NOT EXISTS idx_students_user_id             ON students(user_id);
 
 -- =======================
@@ -357,7 +368,7 @@ CREATE TABLE IF NOT EXISTS timetables (
   school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
-  subject_id              INT         NOT NULL REFERENCES subjects(id)             ON DELETE CASCADE,
+  subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
   teacher_id              INT         REFERENCES users(id) ON DELETE SET NULL,
   day_of_week             day_of_week NOT NULL,
   start_time              TIME        NOT NULL,
@@ -380,7 +391,7 @@ CREATE TABLE IF NOT EXISTS homework (
   school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
-  subject_id              INT         NOT NULL REFERENCES subjects(id)             ON DELETE CASCADE,
+  subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
   teacher_id              INT         REFERENCES users(id) ON DELETE SET NULL,
   title                   VARCHAR(200) NOT NULL,
   description             TEXT,
@@ -401,19 +412,19 @@ CREATE TABLE IF NOT EXISTS marks (
   school_id               INT       NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT       REFERENCES school_academic_years(id) ON DELETE SET NULL,
   student_id              INT       NOT NULL REFERENCES students(id)             ON DELETE CASCADE,
-  subject_id              INT       NOT NULL REFERENCES subjects(id)             ON DELETE CASCADE,
+  subject_master_id       INT       NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
   exam_type               exam_type NOT NULL DEFAULT 'final',
   score                   NUMERIC(6,2),
   max_score               NUMERIC(6,2) NOT NULL DEFAULT 100,
   exam_date               DATE,
   remarks                 TEXT,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (student_id, subject_id, exam_type, exam_date)
+  UNIQUE (student_id, subject_master_id, exam_type, exam_date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_marks_school_id  ON marks(school_id);
 CREATE INDEX IF NOT EXISTS idx_marks_student_id ON marks(student_id);
-CREATE INDEX IF NOT EXISTS idx_marks_subject_id ON marks(subject_id);
+CREATE INDEX IF NOT EXISTS idx_marks_subject_master_id ON marks(subject_master_id);
 
 -- =======================
 -- TABLE: fees
@@ -528,8 +539,8 @@ DO $$ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'schools', 'users', 'academic_years', 'school_academic_years',
-    'class_masters', 'subject_masters',
-    'subjects', 'school_classes', 'class_subjects', 'class_teachers', 'subject_teachers',
+    'class_masters', 'subject_masters', 'division_masters',
+    'school_classes', 'school_class_subjects', 'school_class_teachers', 'school_subject_teachers',
     'students', 'timetables', 'homework', 'fees',
     'salary_structures', 'salary_records', 'notices'
   ]

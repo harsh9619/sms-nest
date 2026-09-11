@@ -2,12 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { ClassMaster } from "../../entities/class-master.entity.js";
-import { Subject } from "../../entities/subject.entity.js";
+import { SubjectMaster } from "../../entities/subject-master.entity.js";
 import { User } from "../../entities/user.entity.js";
 import { SchoolClass } from "../../entities/school-class.entity.js";
-import { ClassSubject } from "../../entities/class-subject.entity.js";
-import { ClassTeacher } from "../../entities/class-teacher.entity.js";
-import { SubjectTeacher } from "../../entities/subject-teacher.entity.js";
+import { SchoolClassSubject } from "../../entities/class-subject.entity.js";
+import { SchoolClassTeacher } from "../../entities/class-teacher.entity.js";
+import { SchoolSubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 import { toIntID } from "../../db/index.js";
 
@@ -18,8 +18,8 @@ export class ClassService {
     private schoolClassRepo: Repository<SchoolClass>,
     @InjectRepository(ClassMaster)
     private classMasterRepo: Repository<ClassMaster>,
-    @InjectRepository(Subject)
-    private subjectRepo: Repository<Subject>,
+    @InjectRepository(SubjectMaster)
+    private subjectMasterRepo: Repository<SubjectMaster>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private ayService: AcademicYearService,
@@ -77,7 +77,10 @@ export class ClassService {
           [classId]
         );
         const subjectsRes = await this.schoolClassRepo.query(
-          `SELECT ARRAY_AGG(name) AS subjects FROM subjects WHERE class_id = $1`,
+          `SELECT ARRAY_AGG(sm.name) AS subjects
+           FROM subject_masters sm
+           JOIN school_class_subjects scs ON scs.subject_master_id = sm.id
+           WHERE scs.class_id = $1`,
           [classId]
         );
 
@@ -141,12 +144,14 @@ export class ClassService {
       const savedClass = await queryRunner.manager.save(SchoolClass, newSchoolClass);
 
       if (dbTeacherId) {
-        const newClassTeacher = queryRunner.manager.create(ClassTeacher, {
+        const newClassTeacher = queryRunner.manager.create(SchoolClassTeacher, {
+          school_id: schoolId,
+          school_academic_year_id: finalSayId,
           class_id: savedClass.id,
           teacher_id: dbTeacherId,
           is_primary: true,
         });
-        await queryRunner.manager.save(ClassTeacher, newClassTeacher);
+        await queryRunner.manager.save(SchoolClassTeacher, newClassTeacher);
       }
 
       if (subjects && Array.isArray(subjects)) {
@@ -154,28 +159,34 @@ export class ClassService {
           const cleanSub = String(sub).trim();
           if (!cleanSub) continue;
 
-          const newSub = queryRunner.manager.create(Subject, {
-            school_id: schoolId,
-            name: cleanSub,
-            code: cleanSub.toUpperCase(),
-            class_id: savedClass.id,
-            teacher_id: dbTeacherId,
+          let sm = await queryRunner.manager.findOne(SubjectMaster, {
+            where: { name: cleanSub },
           });
-          const savedSub = await queryRunner.manager.save(Subject, newSub);
+          if (!sm) {
+            sm = queryRunner.manager.create(SubjectMaster, {
+              name: cleanSub,
+              code: cleanSub.substring(0, 10).toUpperCase(),
+            });
+            sm = await queryRunner.manager.save(SubjectMaster, sm);
+          }
 
-          const newClassSub = queryRunner.manager.create(ClassSubject, {
+          const newClassSub = queryRunner.manager.create(SchoolClassSubject, {
+            school_id: schoolId,
+            school_academic_year_id: finalSayId,
             class_id: savedClass.id,
-            subject_id: savedSub.id,
+            subject_master_id: sm.id,
           });
-          await queryRunner.manager.save(ClassSubject, newClassSub);
+          await queryRunner.manager.save(SchoolClassSubject, newClassSub);
 
           if (dbTeacherId) {
-            const newSubTeacher = queryRunner.manager.create(SubjectTeacher, {
-              subject_id: savedSub.id,
+            const newSubTeacher = queryRunner.manager.create(SchoolSubjectTeacher, {
+              school_id: schoolId,
+              school_academic_year_id: finalSayId,
+              subject_master_id: sm.id,
               teacher_id: dbTeacherId,
               class_id: savedClass.id,
             });
-            await queryRunner.manager.save(SubjectTeacher, newSubTeacher);
+            await queryRunner.manager.save(SchoolSubjectTeacher, newSubTeacher);
           }
         }
       }
@@ -222,49 +233,63 @@ export class ClassService {
       });
 
       if (dbTeacherId) {
-        const existingCT = await queryRunner.manager.findOne(ClassTeacher, {
+        const existingCT = await queryRunner.manager.findOne(SchoolClassTeacher, {
           where: { class_id: classId },
         });
         if (existingCT) {
-          await queryRunner.manager.update(ClassTeacher, existingCT.id, {
+          await queryRunner.manager.update(SchoolClassTeacher, existingCT.id, {
             teacher_id: dbTeacherId,
+            school_id: schoolId,
+            school_academic_year_id: finalSayId,
             is_primary: true,
           });
         } else {
-          const ct = queryRunner.manager.create(ClassTeacher, {
+          const ct = queryRunner.manager.create(SchoolClassTeacher, {
+            school_id: schoolId,
+            school_academic_year_id: finalSayId,
             class_id: classId,
             teacher_id: dbTeacherId,
             is_primary: true,
           });
-          await queryRunner.manager.save(ClassTeacher, ct);
+          await queryRunner.manager.save(SchoolClassTeacher, ct);
         }
       }
 
       if (subjects && Array.isArray(subjects)) {
         const cleanSubjects = subjects.map((s: any) => String(s).trim()).filter(Boolean);
-        const existingSubjects = await queryRunner.manager.find(Subject, {
-          where: { class_id: classId },
-        });
-        const existingNames = existingSubjects.map((s) => s.name);
+        await queryRunner.manager.delete(SchoolClassSubject, { class_id: classId });
 
-        const toDelete = existingSubjects.filter((s) => !cleanSubjects.includes(s.name));
-        for (const sub of toDelete) {
-          await queryRunner.manager.delete(Subject, sub.id);
-        }
-
-        const toAdd = cleanSubjects.filter((n) => !existingNames.includes(n));
-        for (const sub of toAdd) {
-          const newSub = queryRunner.manager.create(Subject, {
-            school_id: schoolId,
-            name: sub,
-            code: sub.toUpperCase(),
-            class_id: classId,
-            teacher_id: dbTeacherId,
+        for (const subName of cleanSubjects) {
+          let sm = await queryRunner.manager.findOne(SubjectMaster, {
+            where: { name: subName },
           });
-          await queryRunner.manager.save(Subject, newSub);
-        }
+          if (!sm) {
+            sm = queryRunner.manager.create(SubjectMaster, {
+              name: subName,
+              code: subName.substring(0, 10).toUpperCase(),
+            });
+            sm = await queryRunner.manager.save(SubjectMaster, sm);
+          }
 
-        await queryRunner.manager.update(Subject, { class_id: classId }, { teacher_id: dbTeacherId });
+          const scs = queryRunner.manager.create(SchoolClassSubject, {
+            school_id: schoolId,
+            school_academic_year_id: finalSayId,
+            class_id: classId,
+            subject_master_id: sm.id,
+          });
+          await queryRunner.manager.save(SchoolClassSubject, scs);
+
+          if (dbTeacherId) {
+            const sst = queryRunner.manager.create(SchoolSubjectTeacher, {
+              school_id: schoolId,
+              school_academic_year_id: finalSayId,
+              class_id: classId,
+              subject_master_id: sm.id,
+              teacher_id: dbTeacherId,
+            });
+            await queryRunner.manager.save(SchoolSubjectTeacher, sst);
+          }
+        }
       }
 
       await queryRunner.commitTransaction();
@@ -334,10 +359,10 @@ export class ClassService {
 
       if (dbTeacherId) {
         await this.dataSource.query(
-          `INSERT INTO class_teachers (class_id, teacher_id, is_primary)
-           VALUES ($1, $2, TRUE)
+          `INSERT INTO school_class_teachers (school_id, school_academic_year_id, class_id, teacher_id, is_primary)
+           VALUES ($1, $2, $3, $4, TRUE)
            ON CONFLICT DO NOTHING`,
-          [saved.id, dbTeacherId]
+          [schoolId, finalSayId, saved.id, dbTeacherId]
         );
       }
 

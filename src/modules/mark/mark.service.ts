@@ -33,7 +33,7 @@ export class MarkService {
       qb.andWhere("m.student_id = :studentId", { studentId });
     }
     if (subjectId) {
-      qb.andWhere("m.subject_id = :subjectId", { subjectId });
+      qb.andWhere("m.subject_master_id = :subjectId", { subjectId });
     }
     if (classId) {
       qb.andWhere("st.class_id = :classId", { classId });
@@ -51,7 +51,7 @@ export class MarkService {
       studentName: m.student?.user ? m.student.user.name : "",
       rollNumber: m.student ? m.student.roll_no : "",
       class: m.student?.class ? `${m.student.class.name}-${m.student.class.division || ""}` : "",
-      subjectId: String(m.subject_id),
+      subjectId: String(m.subject_master_id),
       subjectName: m.subject ? m.subject.name : "",
       examType: m.exam_type,
       score: m.score !== null ? Number(m.score) : null,
@@ -69,7 +69,7 @@ export class MarkService {
       where: {
         school_id: schoolId,
         student_id: studentId,
-        subject_id: subjectId,
+        subject_master_id: subjectId,
         exam_type: examType,
         exam_date: examDate || undefined,
       },
@@ -83,7 +83,7 @@ export class MarkService {
       mark = this.markRepo.create({
         school_id: schoolId,
         student_id: studentId,
-        subject_id: subjectId,
+        subject_master_id: subjectId,
         exam_type: examType,
         score,
         max_score: maxScore || 100,
@@ -108,7 +108,7 @@ export class MarkService {
     const m = await this.markRepo.findOne({ where: { id: markId } });
     if (!m) return null;
 
-    const list = await this.getMarks(m.school_id, m.student_id, m.subject_id, null, null);
+    const list = await this.getMarks(m.school_id, m.student_id, m.subject_master_id, null, null);
     return list.find((item) => Number(item.id) === markId) || null;
   }
 
@@ -116,7 +116,7 @@ export class MarkService {
     const m = await this.markRepo.findOne({ where: { id: markId } });
     if (!m) return null;
 
-    const list = await this.getMarks(m.school_id, m.student_id, m.subject_id, null, null);
+    const list = await this.getMarks(m.school_id, m.student_id, m.subject_master_id, null, null);
     const resultObj = list.find((item) => Number(item.id) === markId) || null;
 
     await this.markRepo.delete(markId);
