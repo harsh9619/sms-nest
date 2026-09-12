@@ -251,15 +251,17 @@ CREATE TABLE IF NOT EXISTS school_class_subjects (
   school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
+  division_master_id      INT         REFERENCES division_masters(id)       ON DELETE SET NULL,
   subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (school_id, school_academic_year_id, class_id, subject_master_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_school_class_subjects_school_id ON school_class_subjects(school_id);
-CREATE INDEX IF NOT EXISTS idx_school_class_subjects_class_id  ON school_class_subjects(class_id);
-CREATE INDEX IF NOT EXISTS idx_school_class_subjects_subj_id   ON school_class_subjects(subject_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_school_id          ON school_class_subjects(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_class_id           ON school_class_subjects(class_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_division_master_id ON school_class_subjects(division_master_id);
+CREATE INDEX IF NOT EXISTS idx_school_class_subjects_subj_id            ON school_class_subjects(subject_master_id);
 
 -- =======================
 -- TABLE: school_class_teachers

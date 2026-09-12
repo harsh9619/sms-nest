@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   BadRequestException,
 } from "@nestjs/common";
 import { SubjectService } from "./subject.service.js";
@@ -13,7 +14,7 @@ import { toIntID } from "../../db/index.js";
 
 @Controller("api/:schoolId/subjects")
 export class SubjectController {
-  constructor(private readonly subjectService: SubjectService) {}
+  constructor(private readonly subjectService: SubjectService) { }
 
   @Get("masters")
   async getSubjectMasters() {
@@ -40,8 +41,25 @@ export class SubjectController {
     return this.subjectService.getSubjectsWithTeachers(schoolId, classId);
   }
 
-  @Post("sync")
-  async syncClassSubjects(
+  @Get("class-subject-teacher")
+  async getSchoolSubjectTeachers(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("classId") classIdStr?: string,
+    @Query("academicYearId") academicYearIdStr?: string,
+    @Query("schoolAcademicYearId") schoolAcademicYearIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const academicYearValue = academicYearHeader;
+
+    return this.subjectService.getSchoolSubjectTeachers(
+      toIntID(String(schoolIdStr)),
+      classIdStr ? toIntID(String(classIdStr)) : null,
+      academicYearValue ? toIntID(String(academicYearValue)) : null
+    );
+  }
+
+  @Post("add-class-subject")
+  async addClassSubjects(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: any
   ) {
@@ -52,7 +70,7 @@ export class SubjectController {
       throw new BadRequestException("classId and masterSubjectIds array are required");
     }
 
-    return this.subjectService.syncClassSubjects(
+    return this.subjectService.addClassSubjects(
       schoolId,
       toIntID(String(classId)),
       masterSubjectIds.map((id: any) => toIntID(String(id)))
@@ -60,7 +78,12 @@ export class SubjectController {
   }
 
   @Put("assign-teacher")
-  async assignSubjectTeacher(@Body() body: any) {
+  async assignSubjectTeacher(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string,
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : 1;
     const { subjectId, teacherId } = body;
     if (!subjectId) {
       throw new BadRequestException("subjectId is required");
@@ -68,7 +91,9 @@ export class SubjectController {
 
     return this.subjectService.updateSubjectTeacher(
       toIntID(String(subjectId)),
-      teacherId ? toIntID(String(teacherId)) : null
+      teacherId ? toIntID(String(teacherId)) : null,
+      academicYearHeader ? toIntID(String(academicYearHeader)) : '',
+      schoolId,
     );
   }
 }

@@ -23,22 +23,9 @@ export class ClassController {
     return this.classService.getClassMasters();
   }
 
-   @Get("div_masters")
+  @Get("div_masters")
   async getDivisionMasters() {
     return this.classService.getDivisionMasters();
-  }
-
-  @Get("teachers")
-  async getSchoolClassTeachers(
-    @Param("schoolId") schoolIdStr: string,
-    @Query("classId") classIdStr?: string,
-    @Headers("academicyearid") academicYearHeader?: string
-  ) {
-    return this.classService.getSchoolClassTeachers(
-      toIntID(String(schoolIdStr)),
-      academicYearHeader ? toIntID(String(academicYearHeader)) : null,
-      classIdStr ? toIntID(String(classIdStr)) : null
-    );
   }
 
   @Get()
@@ -179,5 +166,38 @@ export class ClassController {
 
     await this.classService.deleteClass(classId);
     return existing;
+  }
+
+  @Get("class_teachers")
+  async getSchoolClassTeachers(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("classId") classIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    return this.classService.getSchoolClassTeachers(
+      toIntID(String(schoolIdStr)),
+      academicYearHeader ? toIntID(String(academicYearHeader)) : null,
+      classIdStr ? toIntID(String(classIdStr)) : null
+    );
+  }
+
+  @Put("class_teachers/:id")
+  async updateTeacherForClass(
+    @Param("schoolId") schoolIdStr: string,
+    @Param("id") idStr: string,
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : 1;
+    const classId = toIntID(idStr);
+    const rawTeacherId = body && typeof body === "object" ? body.teacherId : body;
+    const teacherId = rawTeacherId ? toIntID(String(rawTeacherId)) : null;
+
+    return this.classService.updateSchoolClassTeacher(
+      classId,
+      teacherId,
+      schoolId,
+      academicYearHeader
+    );
   }
 }

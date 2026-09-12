@@ -186,47 +186,47 @@ SELECT setval(pg_get_serial_sequence('public.school_classes', 'id'), MAX(id), TR
 -- SCHOOL CLASS SUBJECTS
 -- =======================
 
-INSERT INTO school_class_subjects (id, school_id, school_academic_year_id, class_id, subject_master_id)
+INSERT INTO school_class_subjects (id, school_id, school_academic_year_id, class_id, division_master_id, subject_master_id)
 OVERRIDING SYSTEM VALUE VALUES
-  -- Greenwood 5A (class_id=1, say_id=1)
-  (1,  1, 1, 1, 4),   -- Mathematics
-  (2,  1, 1, 1, 1),   -- English
-  (3,  1, 1, 1, 5),   -- Science
-  (4,  1, 1, 1, 9),   -- Social Studies
-  (24, 1, 1, 1, 2),   -- Hindi
-  (25, 1, 1, 1, 16),  -- Computer Science
+  -- Greenwood 5A (class_id=1, say_id=1, division_master_id=1)
+  (1,  1, 1, 1, 1, 4),   -- Mathematics
+  (2,  1, 1, 1, 1, 1),   -- English
+  (3,  1, 1, 1, 1, 5),   -- Science
+  (4,  1, 1, 1, 1, 9),   -- Social Studies
+  (24, 1, 1, 1, 1, 2),   -- Hindi
+  (25, 1, 1, 1, 1, 16),  -- Computer Science
 
-  -- Greenwood 5B (class_id=2, say_id=1)
-  (5,  1, 1, 2, 4),   -- Mathematics
-  (6,  1, 1, 2, 1),   -- English
-  (7,  1, 1, 2, 5),   -- Science
-  (26, 1, 1, 2, 19),  -- Art & Craft
+  -- Greenwood 5B (class_id=2, say_id=1, division_master_id=2)
+  (5,  1, 1, 2, 2, 4),   -- Mathematics
+  (6,  1, 1, 2, 2, 1),   -- English
+  (7,  1, 1, 2, 2, 5),   -- Science
+  (26, 1, 1, 2, 2, 19),  -- Art & Craft
 
-  -- Greenwood 8A (class_id=3, say_id=1)
-  (8,  1, 1, 3, 4),   -- Mathematics
-  (9,  1, 1, 3, 6),   -- Physics
-  (10, 1, 1, 3, 7),   -- Chemistry
-  (11, 1, 1, 3, 8),   -- Biology
-  (12, 1, 1, 3, 21),  -- English Literature
-  (27, 1, 1, 3, 18),  -- Physical Education
+  -- Greenwood 8A (class_id=3, say_id=1, division_master_id=1)
+  (8,  1, 1, 3, 1, 4),   -- Mathematics
+  (9,  1, 1, 3, 1, 6),   -- Physics
+  (10, 1, 1, 3, 1, 7),   -- Chemistry
+  (11, 1, 1, 3, 1, 8),   -- Biology
+  (12, 1, 1, 3, 1, 21),  -- English Literature
+  (27, 1, 1, 3, 1, 18),  -- Physical Education
 
-  -- Greenwood 10A (class_id=4, say_id=1)
-  (13, 1, 1, 4, 4),   -- Mathematics
-  (14, 1, 1, 4, 6),   -- Physics
-  (15, 1, 1, 4, 7),   -- Chemistry
-  (16, 1, 1, 4, 16),  -- Computer Science
-  (17, 1, 1, 4, 1),   -- English
-  (28, 1, 1, 4, 13),  -- Economics
+  -- Greenwood 10A (class_id=4, say_id=1, division_master_id=1)
+  (13, 1, 1, 4, 1, 4),   -- Mathematics
+  (14, 1, 1, 4, 1, 6),   -- Physics
+  (15, 1, 1, 4, 1, 7),   -- Chemistry
+  (16, 1, 1, 4, 1, 16),  -- Computer Science
+  (17, 1, 1, 4, 1, 1),   -- English
+  (28, 1, 1, 4, 1, 13),  -- Economics
 
-  -- Sunrise 6A (class_id=5, say_id=3)
-  (18, 2, 3, 5, 4),   -- Mathematics
-  (19, 2, 3, 5, 1),   -- English
-  (20, 2, 3, 5, 5),   -- Science
+  -- Sunrise 6A (class_id=5, say_id=3, division_master_id=1)
+  (18, 2, 3, 5, 1, 4),   -- Mathematics
+  (19, 2, 3, 5, 1, 1),   -- English
+  (20, 2, 3, 5, 1, 5),   -- Science
 
-  -- Sunrise 9A (class_id=6, say_id=3)
-  (21, 2, 3, 6, 4),   -- Mathematics
-  (22, 2, 3, 6, 6),   -- Physics
-  (23, 2, 3, 6, 10)   -- History
+  -- Sunrise 9A (class_id=6, say_id=3, division_master_id=1)
+  (21, 2, 3, 6, 1, 4),   -- Mathematics
+  (22, 2, 3, 6, 1, 6),   -- Physics
+  (23, 2, 3, 6, 1, 10)   -- History
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.school_class_subjects', 'id'), MAX(id), TRUE) FROM public.school_class_subjects;

@@ -7,6 +7,7 @@ import { User } from "../../entities/user.entity.js";
 import { DivisionMaster } from "../../entities/division-master.entity.js";
 import { SubjectController } from "./subject.controller.js";
 import { SubjectService } from "./subject.service.js";
+import { AcademicYearModule } from "../academic-year/academic-year.module.js";
 
 @Module({
   imports: [
@@ -17,10 +18,11 @@ import { SubjectService } from "./subject.service.js";
       User,
       DivisionMaster,
     ]),
+    AcademicYearModule
   ],
   controllers: [SubjectController],
   providers: [SubjectService],
   exports: [SubjectService],
 })
-export class SubjectModule {}
+export class SubjectModule { }
 

@@ -10,6 +10,7 @@ import {
 import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { SchoolClass } from "./school-class.entity.js";
+import { DivisionMaster } from "./division-master.entity.js";
 import { SubjectMaster } from "./subject-master.entity.js";
 
 @Entity("school_class_subjects")
@@ -37,6 +38,13 @@ export class SchoolClassSubject {
   @ManyToOne(() => SchoolClass, { onDelete: "CASCADE" })
   @JoinColumn({ name: "class_id" })
   class: SchoolClass;
+
+  @Column({ type: "int", nullable: true })
+  division_master_id: number;
+
+  @ManyToOne(() => DivisionMaster, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "division_master_id" })
+  division_master: DivisionMaster;
 
   @Column({ type: "int" })
   subject_master_id: number;
