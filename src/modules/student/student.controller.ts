@@ -9,27 +9,45 @@ import {
   Body,
   BadRequestException,
   NotFoundException,
+  Headers
 } from "@nestjs/common";
 import { StudentService } from "./student.service.js";
 import { toIntID } from "../../db/index.js";
 
 @Controller("api/:schoolId/students")
 export class StudentController {
-  constructor(private readonly studentService: StudentService) {}
+  constructor(private readonly studentService: StudentService) { }
 
   @Get()
   async getStudents(
     @Param("schoolId") schoolIdStr: string,
-    @Query("academicYear") academicYear?: string
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
+    @Query("search") search?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("sectionId") sectionIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
-    return this.studentService.getStudents(schoolId, academicYear);
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const classId = classIdStr && classIdStr !== "all" ? toIntID(classIdStr) : undefined;
+    const sectionId = sectionIdStr && sectionIdStr !== "all" ? toIntID(sectionIdStr) : undefined;
+
+    return this.studentService.getStudents(schoolId, academicYearHeader, {
+      page,
+      limit,
+      search,
+      classId,
+      sectionId,
+    });
   }
 
   @Post()
   async createStudent(
     @Param("schoolId") schoolIdStr: string,
-    @Body() body: any
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = toIntID(String(schoolIdStr));
     const {
@@ -38,58 +56,88 @@ export class StudentController {
       phone,
       class: className,
       section,
+      class_id,
+      division_master_id,
       rollNumber,
+      roll_no,
       parentName,
+      guardian_name,
       parentPhone,
+      guardian_phone,
       address,
       dateOfBirth,
+      dob,
       gender,
       bloodGroup,
+      blood_group,
+      admissionDate,
+      admission_date,
+      school_academic_year_id,
     } = body;
 
-    if (!name || !email || !rollNumber || !className || !section) {
-      throw new BadRequestException(
-        "Name, email, roll number, class, and section are required."
-      );
+    const finalRollNumber = rollNumber || roll_no;
+    const finalParentName = parentName || guardian_name;
+    const finalParentPhone = parentPhone || guardian_phone;
+    const finalDob = dateOfBirth || dob;
+    const finalBloodGroup = bloodGroup || blood_group;
+    const finalAdmissionDate = admissionDate || admission_date;
+
+    if (!name || !email) {
+      throw new BadRequestException("Name and email are required.");
     }
 
     const emailExists = await this.studentService.checkEmailExists(email, schoolId);
     if (emailExists) {
-      throw new BadRequestException(
-        "A user with this email already exists in this school."
+      throw new BadRequestException("A user with this email already exists in this school.");
+    }
+
+    let finalClassId: number | undefined = class_id ? toIntID(String(class_id)) : undefined;
+    let finalDivMasterId: number | undefined = division_master_id ? toIntID(String(division_master_id)) : undefined;
+
+    if (finalClassId) {
+      const validClass = await this.studentService.getClassById(schoolId, finalClassId);
+      if (!validClass) {
+        finalClassId = undefined;
+      }
+    }
+
+    if (!finalClassId && className) {
+      finalClassId = await this.studentService.getOrCreateClass(
+        schoolId,
+        className,
+        section || "A"
       );
     }
 
-    const classId = await this.studentService.getOrCreateClass(
-      schoolId,
-      className,
-      section
-    );
-
-    const rollExists = await this.studentService.checkRollNumberExists(
-      schoolId,
-      classId,
-      rollNumber
-    );
-    if (rollExists) {
-      throw new BadRequestException(
-        `Roll number ${rollNumber} already exists in Class ${className}-${section}.`
+    if (finalClassId && finalRollNumber) {
+      const rollExists = await this.studentService.checkRollNumberExists(
+        schoolId,
+        finalClassId,
+        finalRollNumber
       );
+      if (rollExists) {
+        throw new BadRequestException(
+          `Roll number ${finalRollNumber} already exists in this class.`
+        );
+      }
     }
 
     try {
-      const studentId = await this.studentService.createStudent(schoolId, {
+      const studentId = await this.studentService.createStudent(schoolId, academicYearHeader, {
         name,
         email,
         phone,
-        classId,
-        rollNumber,
-        parentName,
-        parentPhone,
+        classId: finalClassId,
+        divisionMasterId: finalDivMasterId,
+        rollNumber: finalRollNumber,
+        parentName: finalParentName,
+        parentPhone: finalParentPhone,
         address,
-        dateOfBirth,
+        dateOfBirth: finalDob,
         gender,
-        bloodGroup,
+        bloodGroup: finalBloodGroup,
+        admissionDate: finalAdmissionDate,
+        school_academic_year_id: school_academic_year_id ? toIntID(String(school_academic_year_id)) : undefined,
       });
 
       return await this.studentService.getStudentById(studentId);
@@ -106,7 +154,8 @@ export class StudentController {
   @Put(":id")
   async updateStudent(
     @Param("id") idStr: string,
-    @Body() body: any
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const studentId = toIntID(idStr);
     const existing = await this.studentService.getStudentById(studentId);
@@ -123,66 +172,87 @@ export class StudentController {
       phone,
       class: className,
       section,
+      class_id,
+      division_master_id,
       rollNumber,
+      roll_no,
       parentName,
+      guardian_name,
       parentPhone,
+      guardian_phone,
       address,
       dateOfBirth,
+      dob,
       gender,
       bloodGroup,
+      blood_group,
+      admissionDate,
+      admission_date,
+      school_academic_year_id,
     } = body;
 
-    if (!name || !email || !rollNumber || !className || !section) {
-      throw new BadRequestException(
-        "Name, email, roll number, class, and section are required."
+    const finalName = name || existing.name;
+    const finalEmail = email || existing.email;
+    const finalRollNumber = rollNumber !== undefined ? rollNumber : (roll_no !== undefined ? roll_no : existing.roll_no);
+    const finalParentName = parentName !== undefined ? parentName : (guardian_name !== undefined ? guardian_name : existing.guardian_name);
+    const finalParentPhone = parentPhone !== undefined ? parentPhone : (guardian_phone !== undefined ? guardian_phone : existing.guardian_phone);
+    const finalDob = dateOfBirth !== undefined ? dateOfBirth : (dob !== undefined ? dob : existing.dob);
+    const finalBloodGroup = bloodGroup !== undefined ? bloodGroup : (blood_group !== undefined ? blood_group : existing.blood_group);
+    const finalAdmissionDate = admissionDate !== undefined ? admissionDate : (admission_date !== undefined ? admission_date : existing.admission_date);
+
+    let finalClassId: number | undefined = class_id !== undefined ? (class_id ? toIntID(String(class_id)) : undefined) : (existing.class_id ? toIntID(existing.class_id) : undefined);
+    let finalDivMasterId: number | undefined = division_master_id !== undefined ? (division_master_id ? toIntID(String(division_master_id)) : undefined) : (existing.division_master_id ? toIntID(existing.division_master_id) : undefined);
+
+    if (!finalClassId && className) {
+      finalClassId = await this.studentService.getOrCreateClass(
+        schoolId,
+        className,
+        section || existing.division_name || "A"
       );
     }
 
-    const classId = await this.studentService.getOrCreateClass(
-      schoolId,
-      className,
-      section
-    );
-
-    if (existing.email.toLowerCase() !== email.toLowerCase()) {
+    if (finalEmail && existing.email.toLowerCase() !== finalEmail.toLowerCase()) {
       const emailExists = await this.studentService.checkEmailExists(
-        email,
+        finalEmail,
         schoolId,
         userId
       );
       if (emailExists) {
-        throw new BadRequestException(
-          "A user with this email already exists in this school."
-        );
+        throw new BadRequestException("A user with this email already exists in this school.");
       }
     }
 
-    if (existing.class_id !== classId || existing.roll_no !== rollNumber) {
+    const existingClassId = existing.class_id ? toIntID(existing.class_id) : undefined;
+    if (finalClassId && finalRollNumber && (existingClassId !== finalClassId || existing.roll_no !== finalRollNumber)) {
       const rollExists = await this.studentService.checkRollNumberExists(
         schoolId,
-        classId,
-        rollNumber,
+        finalClassId,
+        finalRollNumber,
         studentId
       );
       if (rollExists) {
         throw new BadRequestException(
-          `Roll number ${rollNumber} already exists in Class ${className}-${section}.`
+          `Roll number ${finalRollNumber} already exists in this class.`
         );
       }
     }
 
     try {
-      await this.studentService.updateStudent(studentId, userId, classId, {
-        name,
-        email,
-        phone,
-        rollNumber,
-        parentName,
-        parentPhone,
-        address,
-        dateOfBirth,
-        gender,
-        bloodGroup,
+      await this.studentService.updateStudent(studentId, userId, academicYearHeader, {
+        name: finalName,
+        email: finalEmail,
+        phone: phone !== undefined ? phone : existing.phone,
+        classId: finalClassId,
+        divisionMasterId: finalDivMasterId,
+        rollNumber: finalRollNumber,
+        parentName: finalParentName,
+        parentPhone: finalParentPhone,
+        address: address !== undefined ? address : existing.address,
+        dateOfBirth: finalDob,
+        gender: gender || existing.gender,
+        bloodGroup: finalBloodGroup,
+        admissionDate: finalAdmissionDate,
+        school_academic_year_id: school_academic_year_id ? toIntID(String(school_academic_year_id)) : (existing.school_academic_year_id ? toIntID(existing.school_academic_year_id) : undefined),
       });
 
       return await this.studentService.getStudentById(studentId);
@@ -207,3 +277,5 @@ export class StudentController {
     return existing;
   }
 }
+
+
