@@ -21,15 +21,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const resObj =
       exception instanceof HttpException
         ? exception.getResponse()
-        : { error: exception.message || "Internal Server Error" };
+        : { message: exception.message || "Internal Server Error" };
 
-    const errorMsg =
-      typeof resObj === "string"
-        ? resObj
-        : (resObj as any).error || (resObj as any).message || "Internal Server Error";
+    let errorMessage: string | string[] = "Internal Server Error";
+
+    if (typeof resObj === "string") {
+      errorMessage = resObj;
+    } else if (resObj && typeof resObj === "object") {
+      const obj = resObj as any;
+      errorMessage = obj.message || obj.error || "Internal Server Error";
+    }
 
     response.status(status).json({
-      error: errorMsg,
+      statusCode: status,
+      message: errorMessage,
+      error: errorMessage,
     });
   }
 }

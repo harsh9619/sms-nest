@@ -143,8 +143,15 @@ export class StudentController {
       return await this.studentService.getStudentById(studentId);
     } catch (err: any) {
       if (err.code === "23505") {
+        const detail = err.detail || "";
+        if (detail.includes("email")) {
+          throw new BadRequestException("Student with this email already exists.");
+        }
+        if (detail.includes("roll")) {
+          throw new BadRequestException("Student with this roll number already exists in this class.");
+        }
         throw new BadRequestException(
-          "Duplicate email or duplicate class roll number exists."
+          "Duplicate entry: A student with the same email or class roll number already exists."
         );
       }
       throw err;
@@ -258,8 +265,15 @@ export class StudentController {
       return await this.studentService.getStudentById(studentId);
     } catch (err: any) {
       if (err.code === "23505") {
+        const detail = err.detail || "";
+        if (detail.includes("email")) {
+          throw new BadRequestException("Student with this email already exists.");
+        }
+        if (detail.includes("roll")) {
+          throw new BadRequestException("Student with this roll number already exists in this class.");
+        }
         throw new BadRequestException(
-          "Duplicate email or duplicate class roll number exists."
+          "Duplicate entry: A student with the same email or class roll number already exists."
         );
       }
       throw err;
