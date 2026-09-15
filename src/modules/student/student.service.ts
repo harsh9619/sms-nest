@@ -6,6 +6,10 @@ import { User, UserRole } from "../../entities/user.entity.js";
 import { Class } from "../../entities/class.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
+import { ClassMaster } from "../../entities/class-master.entity.js";
+import { DivisionMaster } from "../../entities/division-master.entity.js";
+import { getRoleId } from "../../common/utils/role.util.js";
+
 export interface GetStudentsOptions {
   page?: number;
   limit?: number;
@@ -23,6 +27,10 @@ export class StudentService {
     private userRepo: Repository<User>,
     @InjectRepository(Class)
     private classRepo: Repository<Class>,
+    @InjectRepository(ClassMaster)
+    private classMasterRepo: Repository<ClassMaster>,
+    @InjectRepository(DivisionMaster)
+    private divisionMasterRepo: Repository<DivisionMaster>,
     private ayService: AcademicYearService,
     private dataSource: DataSource
   ) { }
@@ -40,7 +48,9 @@ export class StudentService {
       .leftJoinAndSelect("st.class", "c")
       .leftJoinAndSelect("st.division_master", "dm")
       .leftJoinAndSelect("st.school_academic_year", "say")
-      .leftJoinAndSelect("say.academic_year", "ay");
+      .leftJoinAndSelect("say.academic_year", "ay")
+      .where("u.is_active = :isActive", { isActive: true })
+      .andWhere("st.is_deleted = :isDeleted", { isDeleted: false });
 
     if (schoolId) {
       qb.andWhere("st.school_id = :schoolId", { schoolId });
@@ -95,7 +105,8 @@ export class StudentService {
     const qb = this.userRepo
       .createQueryBuilder("u")
       .where("LOWER(u.email) = LOWER(:email)", { email })
-      .andWhere("u.school_id = :schoolId", { schoolId });
+      .andWhere("u.school_id = :schoolId", { schoolId })
+      .andWhere("u.role = :studentRole", { studentRole: UserRole.STUDENT });
 
     if (excludeUserId) {
       qb.andWhere("u.id != :excludeUserId", { excludeUserId });
@@ -115,7 +126,8 @@ export class StudentService {
       .createQueryBuilder("st")
       .where("st.school_id = :schoolId", { schoolId })
       .andWhere("st.class_id = :classId", { classId })
-      .andWhere("st.roll_no = :rollNumber", { rollNumber });
+      .andWhere("st.roll_no = :rollNumber", { rollNumber })
+      .andWhere("st.is_deleted = :isDeleted", { isDeleted: false });
 
     if (excludeStudentId) {
       qb.andWhere("st.id != :excludeStudentId", { excludeStudentId });
@@ -131,16 +143,62 @@ export class StudentService {
     });
   }
 
-  async getOrCreateClass(schoolId: number, className: string, section: string) {
+  async getOrCreateClass(schoolId: number, className: string, section: string, sayId?: number | null) {
+    const rawClass = String(className || "").trim();
+    let formattedClassName = rawClass;
+    if (rawClass && !/^class/i.test(rawClass)) {
+      formattedClassName = `Class ${rawClass.toUpperCase()}`;
+    } else if (rawClass) {
+      formattedClassName = rawClass.replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    const formattedSection = String(section || "").trim().toUpperCase();
+
+    const whereCondition: any = { school_id: schoolId, name: formattedClassName, division: formattedSection };
+    if (sayId) {
+      whereCondition.school_academic_year_id = sayId;
+    }
     let cls = await this.classRepo.findOne({
-      where: { school_id: schoolId, name: className, division: section },
+      where: whereCondition,
     });
 
     if (!cls) {
+      // Resolve class_master_id dynamically from classMasterRepo
+      let classMasterId: number | null = null;
+      const cmMatch = await this.classMasterRepo.createQueryBuilder("cm")
+        .where("LOWER(cm.name) = LOWER(:name) OR LOWER(cm.name) = LOWER(:raw)", {
+          name: formattedClassName,
+          raw: rawClass,
+        })
+        .getOne();
+      if (cmMatch) {
+        classMasterId = cmMatch.id;
+      } else {
+        const firstCm = await this.classMasterRepo.findOne({ order: { id: "ASC" } });
+        classMasterId = firstCm ? firstCm.id : 1;
+      }
+
+      // Resolve division_master_id dynamically from divisionMasterRepo
+      let divisionMasterId: number | null = null;
+      const dmMatch = await this.divisionMasterRepo.createQueryBuilder("dm")
+        .where("LOWER(dm.name) = LOWER(:sec) OR LOWER(dm.code) = LOWER(:sec)", {
+          sec: formattedSection,
+        })
+        .getOne();
+      if (dmMatch) {
+        divisionMasterId = dmMatch.id;
+      } else {
+        const firstDm = await this.divisionMasterRepo.findOne({ order: { id: "ASC" } });
+        divisionMasterId = firstDm ? firstDm.id : 1;
+      }
+
       cls = this.classRepo.create({
         school_id: schoolId,
-        name: className,
-        division: section,
+        school_academic_year_id: sayId || undefined,
+        name: formattedClassName,
+        division: formattedSection,
+        class_master_id: classMasterId,
+        division_master_id: divisionMasterId,
       });
       cls = await this.classRepo.save(cls);
     }
@@ -176,27 +234,95 @@ export class StudentService {
         sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
       }
 
+      const studentEmail = email ? email.toLowerCase() : `student_${Date.now()}_${Math.floor(Math.random() * 1000)}@school.com`;
+
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
         name,
-        email: email.toLowerCase(),
+        email: studentEmail,
         password: "password123",
+        role_id: getRoleId(UserRole.STUDENT),
         role: UserRole.STUDENT,
         phone: phone || null,
       });
       const savedUser = await queryRunner.manager.save(User, newUser);
 
+      // Handle parent user creation / update in users table
+      let parentUser: User | null = null;
+      if (parentName) {
+        const targetParentEmail = data.parentEmail || data.parent_email || email;
+        // 1. First search for existing user by email if parentEmail/email is provided and matches role parent
+        if (targetParentEmail) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { email: String(targetParentEmail).toLowerCase(), school_id: schoolId, role: UserRole.PARENT },
+          });
+        }
+
+        // 2. Search for existing user (Parent or Teacher) by phone
+        if (!parentUser && parentPhone) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { phone: parentPhone, school_id: schoolId },
+          });
+        }
+
+        // 3. Search by parent_name & role=parent
+        if (!parentUser) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { name: parentName, school_id: schoolId, role: UserRole.PARENT },
+          });
+        }
+
+        if (parentUser) {
+          // Keep existing role (e.g. if user is a teacher, keep teacher role)
+          parentUser.is_active = true;
+          await queryRunner.manager.save(User, parentUser);
+        } else {
+          const rawParentEmail = data.parentEmail || data.parent_email;
+          const safePhone = parentPhone ? parentPhone.replace(/[^0-9]/g, "") : "";
+          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : (safePhone ? `parent_${safePhone}@school.com` : `parent_${savedUser.id}@school.com`));
+
+          const newParentUser = queryRunner.manager.create(User, {
+            school_id: schoolId,
+            name: parentName,
+            email: parentEmail,
+            password: "password123",
+            role_id: getRoleId(UserRole.PARENT),
+            role: UserRole.PARENT,
+            phone: parentPhone || null,
+            is_active: true,
+          });
+          parentUser = await queryRunner.manager.save(User, newParentUser);
+        }
+      }
+
       const dobValue = dateOfBirth ? dateOfBirth : null;
       const admissionDateValue = admissionDate ? admissionDate : null;
       const genderValue = ["male", "female", "other"].includes(gender) ? gender : "other";
+
+      let finalRollNo = rollNumber ? String(rollNumber).trim() : null;
+      if (!finalRollNo && classId) {
+        const maxRollStudent = await queryRunner.manager
+          .createQueryBuilder(Student, "st")
+          .where("st.school_id = :schoolId", { schoolId })
+          .andWhere("st.class_id = :classId", { classId })
+          .andWhere("st.is_deleted = :isDeleted", { isDeleted: false })
+          .andWhere("st.roll_no ~ '^[0-9]+$'")
+          .orderBy("CAST(st.roll_no AS INTEGER)", "DESC")
+          .getOne();
+
+        const currentDbMax = maxRollStudent && maxRollStudent.roll_no ? parseInt(maxRollStudent.roll_no, 10) : 0;
+        const nextRollInt = currentDbMax + 1;
+        finalRollNo = String(nextRollInt).padStart(4, "0");
+      }
 
       const newStudent = queryRunner.manager.create(Student, {
         school_id: schoolId,
         school_academic_year_id: sayId || null,
         user_id: savedUser.id,
+        parent_user_id: parentUser ? parentUser.id : null,
         class_id: classId || null,
         division_master_id: divisionMasterId || null,
-        roll_no: rollNumber || null,
+        roll_no: finalRollNo,
         dob: dobValue,
         gender: genderValue,
         blood_group: bloodGroup || null,
@@ -249,11 +375,60 @@ export class StudentService {
         name,
         email: email ? email.toLowerCase() : undefined,
         phone: phone !== undefined ? phone : undefined,
+        role_id: getRoleId(UserRole.STUDENT),
       });
 
       const dobValue = dateOfBirth ? dateOfBirth : null;
       const admissionDateValue = admissionDate ? admissionDate : null;
       const genderValue = ["male", "female", "other"].includes(gender) ? gender : "other";
+
+      // Handle Parent user update / creation
+      const studentRec = await queryRunner.manager.findOne(Student, { where: { id: studentId } });
+      const currentParentName = parentName !== undefined ? parentName : studentRec?.guardian_name;
+      const currentParentPhone = parentPhone !== undefined ? parentPhone : studentRec?.guardian_phone;
+
+      let parentUser: User | null = null;
+      if (currentParentName) {
+        if (email) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { email: email.toLowerCase(), role: UserRole.PARENT },
+          });
+        }
+
+        if (!parentUser && currentParentPhone) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { phone: currentParentPhone },
+          });
+        }
+
+        if (!parentUser) {
+          parentUser = await queryRunner.manager.findOne(User, {
+            where: { name: currentParentName, role: UserRole.PARENT },
+          });
+        }
+
+        if (parentUser) {
+          parentUser.is_active = true;
+          await queryRunner.manager.save(User, parentUser);
+        } else {
+          const studentUser = await queryRunner.manager.findOne(User, { where: { id: userId } });
+          const rawParentEmail = data.parentEmail || data.parent_email;
+          const safePhone = currentParentPhone ? currentParentPhone.replace(/[^0-9]/g, "") : "";
+          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : (safePhone ? `parent_${safePhone}@school.com` : `parent_${userId}@school.com`));
+
+          const newParentUser = queryRunner.manager.create(User, {
+            school_id: studentUser?.school_id || undefined,
+            name: currentParentName,
+            email: parentEmail,
+            password: "password123",
+            role_id: getRoleId(UserRole.PARENT),
+            role: UserRole.PARENT,
+            phone: currentParentPhone || null,
+            is_active: true,
+          });
+          parentUser = await queryRunner.manager.save(User, newParentUser);
+        }
+      }
 
       const studentUpdate: any = {
         gender: genderValue,
@@ -265,6 +440,9 @@ export class StudentService {
         admission_date: admissionDateValue,
       };
 
+      if (parentUser) {
+        studentUpdate.parent_user_id = parentUser.id;
+      }
       if (classId !== undefined) {
         studentUpdate.class_id = classId;
       }
@@ -290,7 +468,208 @@ export class StudentService {
   }
 
   async deleteStudent(userId: number) {
-    await this.userRepo.delete(userId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Get student record to inspect guardian details
+      const student = await queryRunner.manager.findOne(Student, { where: { user_id: userId } });
+
+      // 2. Soft delete student user
+      await queryRunner.manager.update(User, userId, { is_active: false });
+
+      // 3. Deactivate associated parent user ONLY if no other active students remain with this parent
+      if (student) {
+        const guardianPhone = student.guardian_phone;
+        const guardianName = student.guardian_name;
+
+        const otherActiveStudents = await queryRunner.manager
+          .createQueryBuilder(Student, "st")
+          .innerJoin("st.user", "u")
+          .where("st.id != :studentId", { studentId: student.id })
+          .andWhere("u.is_active = :isActive", { isActive: true })
+          .andWhere(
+            "( (st.guardian_phone IS NOT NULL AND st.guardian_phone = :phone) OR (st.guardian_name IS NOT NULL AND st.guardian_name = :name) )",
+            { phone: guardianPhone || "", name: guardianName || "" }
+          )
+          .getCount();
+
+        if (otherActiveStudents === 0) {
+          let parentUser: User | null = null;
+          if (guardianPhone) {
+            parentUser = await queryRunner.manager.findOne(User, {
+              where: { phone: guardianPhone, role: UserRole.PARENT },
+            });
+          }
+          if (!parentUser && guardianName) {
+            parentUser = await queryRunner.manager.findOne(User, {
+              where: { name: guardianName, role: UserRole.PARENT },
+            });
+          }
+          if (!parentUser) {
+            parentUser = await queryRunner.manager.findOne(User, {
+              where: { email: `parent_${userId}@school.com` },
+            });
+          }
+
+          if (parentUser) {
+            await queryRunner.manager.update(User, parentUser.id, { is_active: false });
+          }
+
+          await queryRunner.manager.update(Student, student.id, { is_deleted: true });
+        } else {
+          await queryRunner.manager.update(Student, student.id, { is_deleted: true });
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async bulkCreateStudents(
+    schoolId: number,
+    academicYearHeader: string | undefined,
+    students: Array<any>
+  ) {
+    const results = {
+      addedCount: 0,
+      skippedCount: 0,
+      errors: [] as Array<{ email: string; reason: string }>,
+    };
+
+    let sayId = null;
+    if (!sayId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    }
+
+    const classNextRollMap = new Map<number, number>();
+    for (const st of students) {
+      const name = st.name;
+      const email = st.email ? String(st.email).trim().toLowerCase() : "";
+      const className = st.class || st.className;
+      const section = st.section || st.division || "A";
+      let rollNumber = st.rollNumber || st.roll_no;
+      const parentName = st.parentName || st.guardian_name || st.parent_name || st.parentname;
+      const parentPhone = st.parentPhone || st.guardian_phone || st.parent_phone || st.parentphone;
+      const dateOfBirth = st.dateOfBirth || st.dob;
+      const bloodGroup = st.bloodGroup || st.blood_group;
+      const admissionDate = st.admissionDate || st.admission_date;
+      const rawGender = st.gender ? String(st.gender).trim().toLowerCase() : "";
+      const address = st.address;
+      const rawDivision = st.division_master_id || st.divisionMasterId || st.division || st.section || section;
+      const schoolAcademicYearId = st.school_academic_year_id || st.schoolAcademicYearId;
+
+      if (!name) {
+        results.skippedCount++;
+        results.errors.push({ email: email || "N/A", reason: "Name is required" });
+        continue;
+      }
+
+      // 1. Resolve Class
+      let classId: number | undefined = st.classId || st.class_id;
+      if (!classId && className) {
+        classId = await this.getOrCreateClass(schoolId, className, section, sayId);
+      }
+
+      // 2. Resolve DivisionMasterId from Division Name or Code
+      let divisionMasterId: number | undefined = undefined;
+      if (rawDivision) {
+        if (!isNaN(Number(rawDivision))) {
+          divisionMasterId = Number(rawDivision);
+        } else {
+          const divMaster = await this.divisionMasterRepo.createQueryBuilder("dm")
+            .where("LOWER(dm.name) = LOWER(:d) OR LOWER(dm.code) = LOWER(:d)", { d: String(rawDivision).trim() })
+            .getOne();
+          if (divMaster) {
+            divisionMasterId = divMaster.id;
+          }
+        }
+      }
+
+      // 3. Normalize Gender (m / Male / male -> male; f / Female / female -> female; o / Other / other -> other)
+      let normalizedGender = "other";
+      if (rawGender === "m" || rawGender === "male") {
+        normalizedGender = "male";
+      } else if (rawGender === "f" || rawGender === "female") {
+        normalizedGender = "female";
+      } else if (rawGender === "o" || rawGender === "other") {
+        normalizedGender = "other";
+      }
+
+      // 4. Auto-generate or validate Roll Number
+      if (classId) {
+        if (!rollNumber) {
+          let nextRoll = classNextRollMap.get(classId);
+          if (nextRoll === undefined) {
+            const maxRollStudent = await this.studentRepo.createQueryBuilder("st")
+              .where("st.school_id = :schoolId", { schoolId })
+              .andWhere("st.class_id = :classId", { classId })
+              .andWhere("st.is_deleted = :isDeleted", { isDeleted: false })
+              .andWhere("st.roll_no ~ '^[0-9]+$'")
+              .orderBy("CAST(st.roll_no AS INTEGER)", "DESC")
+              .getOne();
+
+            const currentDbMax = maxRollStudent && maxRollStudent.roll_no ? parseInt(maxRollStudent.roll_no, 10) : 0;
+            nextRoll = currentDbMax + 1;
+          }
+          rollNumber = String(nextRoll).padStart(4, "0");
+          classNextRollMap.set(classId, nextRoll + 1);
+        } else {
+          // If explicit rollNumber was provided, update classNextRollMap if numeric
+          const numRoll = parseInt(String(rollNumber), 10);
+          if (!isNaN(numRoll)) {
+            const currNext = classNextRollMap.get(classId) || 1;
+            if (numRoll >= currNext) {
+              classNextRollMap.set(classId, numRoll + 1);
+            }
+          }
+        }
+      }
+
+      // 5. Check duplicate roll number if specified explicitly or generated
+      if (classId && rollNumber) {
+        const rollExists = await this.checkRollNumberExists(schoolId, classId, String(rollNumber));
+        if (rollExists) {
+          results.skippedCount++;
+          results.errors.push({ email, reason: `Roll number ${rollNumber} already exists in class` });
+          continue;
+        }
+      }
+
+      const parentEmail = st.parentEmail || st.parent_email;
+
+      try {
+        await this.createStudent(schoolId, academicYearHeader, {
+          name: String(name).trim(),
+          email: String(email).trim(),
+          phone: st.phone ? String(st.phone).trim() : undefined,
+          classId,
+          divisionMasterId,
+          rollNumber: rollNumber ? String(rollNumber).trim() : undefined,
+          parentName: parentName ? String(parentName).trim() : undefined,
+          parentPhone: parentPhone ? String(parentPhone).trim() : undefined,
+          parentEmail: parentEmail ? String(parentEmail).trim() : undefined,
+          address: address ? String(address).trim() : undefined,
+          dateOfBirth,
+          gender: normalizedGender,
+          bloodGroup,
+          admissionDate,
+          school_academic_year_id: schoolAcademicYearId ? Number(schoolAcademicYearId) : undefined,
+        });
+        results.addedCount++;
+      } catch (err: any) {
+        results.skippedCount++;
+        results.errors.push({ email, reason: err.message || "Failed to create student" });
+      }
+    }
+
+    return results;
   }
 
   private formatStudentResponse(st: Student) {
@@ -300,6 +679,7 @@ export class StudentService {
       school_academic_year_id: st.school_academic_year_id,
       academic_year_id: st.school_academic_year?.academic_year_id,
       user_id: st.user_id,
+      parent_user_id: st.parent_user_id,
       name: st.user ? st.user.name : "",
       email: st.user ? st.user.email : "",
       phone: st.user ? st.user.phone || "" : "",

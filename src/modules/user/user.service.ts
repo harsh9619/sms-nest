@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { User } from "../../entities/user.entity.js";
 import { Student } from "../../entities/student.entity.js";
+import { getRoleId } from "../../common/utils/role.util.js";
 
 @Injectable()
 export class UserService {
@@ -21,6 +22,9 @@ export class UserService {
 
     if (schoolId && !showAll) {
       qb.where("u.school_id = :schoolId", { schoolId });
+      qb.andWhere("u.is_active = :isActive", { isActive: true });
+    } else {
+      qb.where("u.is_active = :isActive", { isActive: true });
     }
 
     qb.orderBy("u.created_at", "DESC");
@@ -77,6 +81,7 @@ export class UserService {
         name,
         email: email.toLowerCase(),
         password: "password123",
+        role_id: getRoleId(dbRole),
         role: dbRole,
         phone: phone || null,
       });
@@ -115,6 +120,7 @@ export class UserService {
         name,
         email: email.toLowerCase(),
         phone: phone || null,
+        role_id: getRoleId(dbRole),
         role: dbRole,
         school_id: schoolId,
       });
@@ -149,6 +155,6 @@ export class UserService {
   }
 
   async deleteUser(userId: number) {
-    await this.userRepo.delete(userId);
+    await this.userRepo.update(userId, { is_active: false });
   }
 }

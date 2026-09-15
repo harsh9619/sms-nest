@@ -86,10 +86,10 @@ export class StudentController {
       throw new BadRequestException("Name and email are required.");
     }
 
-    const emailExists = await this.studentService.checkEmailExists(email, schoolId);
-    if (emailExists) {
-      throw new BadRequestException("A user with this email already exists in this school.");
-    }
+    // const emailExists = await this.studentService.checkEmailExists(email, schoolId);
+    // if (emailExists) {
+    //   throw new BadRequestException("A user with this email already exists in this school.");
+    // }
 
     let finalClassId: number | undefined = class_id ? toIntID(String(class_id)) : undefined;
     let finalDivMasterId: number | undefined = division_master_id ? toIntID(String(division_master_id)) : undefined;
@@ -289,6 +289,19 @@ export class StudentController {
     }
     await this.studentService.deleteStudent(existing.user_id);
     return existing;
+  }
+
+  @Post("bulk")
+  async bulkCreateStudents(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: { students: any[] },
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    if (!body.students || !Array.isArray(body.students)) {
+      throw new BadRequestException("Expected an array of students under 'students' key.");
+    }
+    return this.studentService.bulkCreateStudents(schoolId, academicYearHeader, body.students);
   }
 }
 

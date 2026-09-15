@@ -60,7 +60,16 @@ async function ensureDatabaseExists() {
 
 async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   await appQuery(`ALTER TABLE school_classes DROP COLUMN IF EXISTS teacher_id`);
+  await appQuery(`ALTER TABLE students ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE`);
 }
+
+const ROLE_MAP: Record<string, number> = {
+  super_admin: 1,
+  school_admin: 2,
+  teacher: 3,
+  student: 4,
+  parent: 5,
+};
 
 async function ensureStudentExists(appQuery: any, studentId: string, name: string, rollNumber: string, className: string, sectionName: string, schoolId: string) {
   const studentUuid = toUUID(studentId);
@@ -71,11 +80,11 @@ async function ensureStudentExists(appQuery: any, studentId: string, name: strin
   const userUuid = toUUID("student_user_" + studentId);
 
   await appQuery(
-    `INSERT INTO users (id, school_id, name, email, password, role, is_active)
+    `INSERT INTO users (id, school_id, name, email, password, role_id, role, is_active)
      OVERRIDING SYSTEM VALUE
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (id) DO NOTHING`,
-    [userUuid, toUUID(schoolId), name, `student_${studentId}@school.com`, "admin123", "student", true]
+    [userUuid, toUUID(schoolId), name, `student_${studentId}@school.com`, "admin123", ROLE_MAP["student"], "student", true]
   );
 
   const schoolUuid = toUUID(schoolId);
@@ -110,11 +119,11 @@ async function ensureTeacherExists(appQuery: any, teacherId: string, name: strin
 
   console.log(`ℹ️ Teacher "${name}" (${teacherId}) does not exist. Creating dynamically...`);
   await appQuery(
-    `INSERT INTO users (id, school_id, name, email, password, role, is_active)
+    `INSERT INTO users (id, school_id, name, email, password, role_id, role, is_active)
      OVERRIDING SYSTEM VALUE
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (id) DO NOTHING`,
-    [teacherUuid, toUUID(schoolId), name, `teacher_${teacherId}@school.com`, "admin123", "teacher", true]
+    [teacherUuid, toUUID(schoolId), name, `teacher_${teacherId}@school.com`, "admin123", ROLE_MAP["teacher"], "teacher", true]
   );
 
   await appQuery(
@@ -353,9 +362,9 @@ async function initializeDatabase() {
         }
 
         await appQuery(
-          `INSERT INTO users (id, school_id, name, email, password, role, phone, avatar_url, is_active)
+          `INSERT INTO users (id, school_id, name, email, password, role_id, role, phone, avatar_url, is_active)
            OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            ON CONFLICT (id) DO NOTHING`,
           [
             userId,
@@ -363,6 +372,7 @@ async function initializeDatabase() {
             u.name,
             u.email,
             "admin123", // default password
+            ROLE_MAP[role] || 4,
             role,
             u.phone || null,
             u.avatar || null,
@@ -382,16 +392,16 @@ async function initializeDatabase() {
 
         if (userRes.rowCount === 0) {
           await appQuery(
-            `INSERT INTO users (id, school_id, name, email, password, role, phone, is_active)
+            `INSERT INTO users (id, school_id, name, email, password, role_id, role, phone, is_active)
              OVERRIDING SYSTEM VALUE
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (id) DO NOTHING`,
-            [teacherUserId, toUUID(t.schoolId), t.name, t.email, "admin123", "teacher", t.phone || null, true]
+            [teacherUserId, toUUID(t.schoolId), t.name, t.email, "admin123", ROLE_MAP["teacher"], "teacher", t.phone || null, true]
           );
         } else {
           await appQuery(
-            `UPDATE users SET school_id = $1, phone = COALESCE(phone, $2) WHERE id = $3`,
-            [toUUID(t.schoolId), t.phone || null, teacherUserId]
+            `UPDATE users SET school_id = $1, role_id = $2, phone = COALESCE(phone, $3) WHERE id = $4`,
+            [toUUID(t.schoolId), ROLE_MAP["teacher"], t.phone || null, teacherUserId]
           );
         }
 
@@ -593,16 +603,16 @@ async function initializeDatabase() {
 
         if (userRes.rowCount === 0) {
           await appQuery(
-            `INSERT INTO users (id, school_id, name, email, password, role, phone, is_active)
+            `INSERT INTO users (id, school_id, name, email, password, role_id, role, phone, is_active)
              OVERRIDING SYSTEM VALUE
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (id) DO NOTHING`,
-            [userUuid, schoolId, s.name, s.email, "admin123", "student", s.phone || null, true]
+            [userUuid, schoolId, s.name, s.email, "admin123", ROLE_MAP["student"], "student", s.phone || null, true]
           );
         } else {
           await appQuery(
-            `UPDATE users SET school_id = $1, phone = COALESCE(phone, $2) WHERE id = $3`,
-            [schoolId, s.phone || null, userUuid]
+            `UPDATE users SET school_id = $1, role_id = $2, phone = COALESCE(phone, $3) WHERE id = $4`,
+            [schoolId, ROLE_MAP["student"], s.phone || null, userUuid]
           );
         }
 
@@ -626,17 +636,41 @@ async function initializeDatabase() {
           gender = "other";
         }
 
+        // Find or create parent user
+        let parentUserId: number | null = null;
+        if (s.parentName) {
+          let parentRes = await appQuery(
+            "SELECT id FROM users WHERE (phone = $1 OR name = $2) AND school_id = $3 LIMIT 1",
+            [s.parentPhone || "", s.parentName, schoolId]
+          );
+          if (parentRes.rowCount > 0) {
+            parentUserId = parentRes.rows[0].id;
+          } else {
+            const newParentUuid = toUUID("parent_user_" + s.id);
+            const parentEmail = s.parentPhone ? `parent_${s.parentPhone}@school.com` : `parent_${s.id}@school.com`;
+            await appQuery(
+              `INSERT INTO users (id, school_id, name, email, password, role_id, role, phone, is_active)
+               OVERRIDING SYSTEM VALUE
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT (id) DO NOTHING`,
+              [newParentUuid, schoolId, s.parentName, parentEmail, "admin123", ROLE_MAP["parent"], "parent", s.parentPhone || null, true]
+            );
+            parentUserId = newParentUuid;
+          }
+        }
+
         // Insert student profile
         await appQuery(
-          `INSERT INTO students (id, school_id, school_academic_year_id, user_id, class_id, division_master_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
+          `INSERT INTO students (id, school_id, school_academic_year_id, user_id, parent_user_id, class_id, division_master_id, roll_no, dob, gender, blood_group, address, guardian_name, guardian_phone, admission_date)
            OVERRIDING SYSTEM VALUE
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            ON CONFLICT (id) DO NOTHING`,
           [
             toUUID(s.id),
             schoolId,
             sayId,
             userUuid,
+            parentUserId,
             classId,
             divisionMasterId,
             s.rollNumber,

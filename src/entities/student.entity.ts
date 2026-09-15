@@ -40,6 +40,13 @@ export class Student {
   user: User;
 
   @Column({ type: "int", nullable: true })
+  parent_user_id: number;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "parent_user_id" })
+  parent_user: User;
+
+  @Column({ type: "int", nullable: true })
   class_id: number;
 
   @ManyToOne(() => Class, { onDelete: "SET NULL", nullable: true })
@@ -76,6 +83,9 @@ export class Student {
 
   @Column({ type: "date", nullable: true })
   admission_date: string;
+
+  @Column({ type: "boolean", default: false })
+  is_deleted: boolean;
 
   @CreateDateColumn({ type: "timestamptz" })
   created_at: Date;

@@ -13,7 +13,7 @@ CREATE SCHEMA IF NOT EXISTS public;
 
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM (
-    'super_admin', 'school_admin', 'teacher', 'student'
+    'super_admin', 'school_admin', 'teacher', 'student', 'parent'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -117,6 +117,27 @@ CREATE TABLE IF NOT EXISTS schools (
 );
 
 -- =======================
+-- TABLE: role_masters
+-- =======================
+
+CREATE TABLE IF NOT EXISTS role_masters (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50)  NOT NULL UNIQUE,
+  label       VARCHAR(100) NOT NULL,
+  description TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+INSERT INTO role_masters (id, name, label, description) VALUES
+  (1, 'super_admin',  'Super Admin',  'System Super Administrator'),
+  (2, 'school_admin', 'School Admin', 'School Administrator'),
+  (3, 'teacher',      'Teacher',      'Teaching Staff'),
+  (4, 'student',      'Student',      'Enrolled Student'),
+  (5, 'parent',       'Parent',       'Student Guardian / Parent')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, label = EXCLUDED.label, description = EXCLUDED.description;
+
+-- =======================
 -- TABLE: users
 -- =======================
 
@@ -124,8 +145,9 @@ CREATE TABLE IF NOT EXISTS users (
   id           SERIAL PRIMARY KEY,
   school_id    INT           REFERENCES schools(id) ON DELETE SET NULL,
   name         VARCHAR(150)  NOT NULL,
-  email        VARCHAR(150)  NOT NULL UNIQUE,
+  email        VARCHAR(150)  NOT NULL,
   password     VARCHAR(255)  NOT NULL,
+  role_id      INT           REFERENCES role_masters(id) ON DELETE SET NULL,
   role         user_role     NOT NULL,
   phone        VARCHAR(20),
   avatar_url   VARCHAR(500),
@@ -136,6 +158,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_school_id ON users(school_id);
+CREATE INDEX IF NOT EXISTS idx_users_role_id   ON users(role_id);
 CREATE INDEX IF NOT EXISTS idx_users_role      ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_email     ON users(email);
 
@@ -318,6 +341,7 @@ CREATE TABLE IF NOT EXISTS students (
   school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT           REFERENCES school_academic_years(id) ON DELETE SET NULL,
   user_id                 INT           NOT NULL REFERENCES users(id)               ON DELETE CASCADE,
+  parent_user_id          INT           REFERENCES users(id)                        ON DELETE CASCADE,
   class_id                INT           REFERENCES school_classes(id) ON DELETE SET NULL,
   division_master_id      INT           REFERENCES division_masters(id) ON DELETE SET NULL,
   roll_no                 VARCHAR(20),
@@ -328,6 +352,7 @@ CREATE TABLE IF NOT EXISTS students (
   guardian_name           VARCHAR(150),
   guardian_phone          VARCHAR(20),
   admission_date          DATE,
+  is_deleted              BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
@@ -337,6 +362,7 @@ CREATE INDEX IF NOT EXISTS idx_students_school_acad_year_id ON students(school_a
 CREATE INDEX IF NOT EXISTS idx_students_class_id            ON students(class_id);
 CREATE INDEX IF NOT EXISTS idx_students_division_master_id ON students(division_master_id);
 CREATE INDEX IF NOT EXISTS idx_students_user_id             ON students(user_id);
+CREATE INDEX IF NOT EXISTS idx_students_parent_user_id      ON students(parent_user_id);
 
 -- =======================
 -- TABLE: attendance
