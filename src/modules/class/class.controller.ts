@@ -156,7 +156,7 @@ export class ClassController {
     }
   }
 
-  @Delete(":id")
+  @Delete("class_div_subject/:id")
   async deleteClass(@Param("id") idStr: string) {
     const classId = toIntID(idStr);
     const existing = await this.classService.getFullClassRecord(classId);

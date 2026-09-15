@@ -23,6 +23,8 @@ export class ClassService {
     private subjectMasterRepo: Repository<SubjectMaster>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(SchoolClassSubject)
+    private schoolClassSubjectRepo: Repository<SchoolClassSubject>,
     @InjectRepository(SchoolClassTeacher)
     private schoolClassTeacherRepo: Repository<SchoolClassTeacher>,
     @InjectRepository(DivisionMaster)
@@ -387,7 +389,36 @@ export class ClassService {
   }
 
   async deleteClass(classId: number) {
-    await this.schoolClassRepo.delete(classId);
+    const targetClass = await this.schoolClassRepo.findOne({ where: { id: classId } });
+    if (!targetClass) return;
+
+    let classIdsToDelete: number[] = [classId];
+
+    if (targetClass.class_master_id) {
+      const matchingClasses = await this.schoolClassRepo.find({
+        where: {
+          school_id: targetClass.school_id,
+          class_master_id: targetClass.class_master_id,
+        },
+      });
+      classIdsToDelete = matchingClasses.map((c) => c.id);
+    }
+
+    if (classIdsToDelete.length > 0) {
+      // Delete from school_class_subjects first
+      await this.schoolClassSubjectRepo
+        .createQueryBuilder()
+        .delete()
+        .where("class_id IN (:...classIdsToDelete)", { classIdsToDelete })
+        .execute();
+
+      // Delete from school_classes by class_master_id / class_id
+      await this.schoolClassRepo
+        .createQueryBuilder()
+        .delete()
+        .where("id IN (:...classIdsToDelete)", { classIdsToDelete })
+        .execute();
+    }
   }
 
   async getClassMasters() {
