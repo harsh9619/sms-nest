@@ -18,6 +18,25 @@ import { toIntID } from "../../db/index.js";
 export class StudentController {
   constructor(private readonly studentService: StudentService) { }
 
+  @Get("export")
+  async exportStudents(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("search") search?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("sectionId") sectionIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    const classId = classIdStr && classIdStr !== "all" ? toIntID(classIdStr) : undefined;
+    const sectionId = sectionIdStr && sectionIdStr !== "all" ? toIntID(sectionIdStr) : undefined;
+
+    return this.studentService.exportStudents(schoolId, academicYearHeader, {
+      search,
+      classId,
+      sectionId,
+    });
+  }
+
   @Get()
   async getStudents(
     @Param("schoolId") schoolIdStr: string,

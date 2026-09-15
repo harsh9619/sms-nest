@@ -64,7 +64,7 @@ export class StudentService {
     if (options?.search) {
       const s = `%${options.search.trim()}%`;
       qb.andWhere(
-        "(LOWER(u.name) LIKE LOWER(:s) OR LOWER(u.email) LIKE LOWER(:s) OR LOWER(st.roll_no) LIKE LOWER(:s) OR LOWER(st.guardian_name) LIKE LOWER(:s))",
+        "(LOWER(u.name) LIKE LOWER(:s) OR LOWER(u.email) LIKE LOWER(:s) OR LOWER(st.roll_no) LIKE LOWER(:s) OR LOWER(st.guardian_name) LIKE LOWER(:s) OR LOWER(st.guardian_phone) LIKE LOWER(:s))",
         { s }
       );
     }
@@ -85,6 +85,45 @@ export class StudentService {
         totalPages: Math.ceil(total / limit) || 1,
       },
     };
+  }
+
+  async exportStudents(schoolId?: number, academicYearHeader?: string, options?: Omit<GetStudentsOptions, 'page' | 'limit'>) {
+    let sayId: number | null = null;
+    sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+
+    const qb = this.studentRepo
+      .createQueryBuilder("st")
+      .innerJoinAndSelect("st.user", "u")
+      .leftJoinAndSelect("st.class", "c")
+      .leftJoinAndSelect("st.division_master", "dm")
+      .leftJoinAndSelect("st.school_academic_year", "say")
+      .leftJoinAndSelect("say.academic_year", "ay")
+      .where("u.is_active = :isActive", { isActive: true })
+      .andWhere("st.is_deleted = :isDeleted", { isDeleted: false });
+
+    if (schoolId) {
+      qb.andWhere("st.school_id = :schoolId", { schoolId });
+    }
+    if (options?.classId) {
+      qb.andWhere("st.class_id = :classId", { classId: options.classId });
+    }
+    if (options?.sectionId) {
+      qb.andWhere("(st.division_master_id = :sectionId OR c.division_master_id = :sectionId)", { sectionId: options.sectionId });
+    }
+    if (options?.search) {
+      const s = `%${options.search.trim()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE LOWER(:s) OR LOWER(u.email) LIKE LOWER(:s) OR LOWER(st.roll_no) LIKE LOWER(:s) OR LOWER(st.guardian_name) LIKE LOWER(:s) OR LOWER(st.guardian_phone) LIKE LOWER(:s))",
+        { s }
+      );
+    }
+    qb.andWhere("st.school_academic_year_id = :sayId", { sayId: sayId });
+    qb.orderBy("c.name", "ASC")
+      .addOrderBy("dm.name", "ASC")
+      .addOrderBy("st.roll_no", "ASC");
+
+    const students = await qb.getMany();
+    return students.map((st) => this.formatStudentResponse(st));
   }
 
   async getStudentById(id: number) {
@@ -565,9 +604,28 @@ export class StudentService {
       const rawDivision = st.division_master_id || st.divisionMasterId || st.division || st.section || section;
       const schoolAcademicYearId = st.school_academic_year_id || st.schoolAcademicYearId;
 
-      if (!name) {
+      if (!name || !email || !className || !section || !parentName) {
         results.skippedCount++;
-        results.errors.push({ email: email || "N/A", reason: "Name is required" });
+        const missing = [];
+        if (!name) missing.push("Name");
+        if (!email) missing.push("Email");
+        if (!className) missing.push("Class");
+        if (!section) missing.push("Section/Division");
+        if (!parentName) missing.push("Parent Name");
+        results.errors.push({ email: email || "N/A", reason: `${missing.join(", ")} required` });
+        continue;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        results.skippedCount++;
+        results.errors.push({ email, reason: "Invalid email format" });
+        continue;
+      }
+
+      if (parentPhone && !/^[6-9]\d{9}$/.test(String(parentPhone).trim())) {
+        results.skippedCount++;
+        results.errors.push({ email, reason: "Guardian phone must be a valid 10-digit number starting with 6-9" });
         continue;
       }
 
@@ -593,7 +651,7 @@ export class StudentService {
       }
 
       // 3. Normalize Gender (m / Male / male -> male; f / Female / female -> female; o / Other / other -> other)
-      let normalizedGender = "other";
+      let normalizedGender = "male";
       if (rawGender === "m" || rawGender === "male") {
         normalizedGender = "male";
       } else if (rawGender === "f" || rawGender === "female") {

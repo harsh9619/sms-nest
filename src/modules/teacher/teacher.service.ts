@@ -7,6 +7,13 @@ import { getRoleId } from "../../common/utils/role.util.js";
 import fs from "fs";
 import path from "path";
 
+export interface GetTeachersOptions {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}
+
 @Injectable()
 export class TeacherService {
   constructor(
@@ -46,8 +53,13 @@ export class TeacherService {
 
   async getTeachers(
     schoolId?: number,
-    academicYearHeader?: string
+    academicYearHeader?: string,
+    options?: GetTeachersOptions
   ) {
+    const page = options?.page && options.page > 0 ? Number(options.page) : undefined;
+    const limit = options?.limit && options.limit > 0 ? Number(options.limit) : undefined;
+    const skip = page && limit ? (page - 1) * limit : undefined;
+
     let sayId: number | null = null;
     if (academicYearHeader) {
       sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
@@ -66,15 +78,35 @@ export class TeacherService {
         "u.is_active AS status",
       ])
       .where("u.role = :role", { role: UserRole.TEACHER });
-    // .andWhere("u.is_active = :isActive", { isActive: true });
 
     if (schoolId) {
       qb.andWhere("u.school_id = :schoolId", { schoolId });
     }
 
+    if (options?.search) {
+      const s = `%${options.search.trim()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE LOWER(:s) OR LOWER(u.email) LIKE LOWER(:s) OR LOWER(u.phone) LIKE LOWER(:s))",
+        { s }
+      );
+    }
+
+    if (options?.status && options.status !== "all") {
+      const isActive = options.status === "active";
+      qb.andWhere("u.is_active = :isActive", { isActive });
+    }
+
+    qb.orderBy("u.name", "ASC");
+
+    const total = await qb.getCount();
+
+    if (skip !== undefined && limit !== undefined) {
+      qb.offset(skip).limit(limit);
+    }
+
     const rawTeachers = await qb.getRawMany();
 
-    return rawTeachers.map((t) => ({
+    const formattedTeachers = rawTeachers.map((t) => ({
       id: String(t.id),
       name: t.name,
       email: t.email,
@@ -85,6 +117,20 @@ export class TeacherService {
       status: t.status,
       schoolAcademicYearId: sayId ? String(sayId) : null,
     }));
+
+    if (page && limit) {
+      return {
+        data: formattedTeachers,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+    }
+
+    return formattedTeachers;
   }
 
   async getTeacherById(id: number) {
@@ -199,16 +245,32 @@ export class TeacherService {
     };
 
     for (const t of teachers) {
-      if (!t.name || !t.email) {
+      const email = t.email ? String(t.email).trim().toLowerCase() : "";
+      const phone = t.phone ? String(t.phone).trim() : "";
+
+      if (!t.name || !email) {
         results.skippedCount++;
-        results.errors.push({ email: t.email || "N/A", reason: "Name and Email are required" });
+        results.errors.push({ email: email || "N/A", reason: "Name and Email are required" });
         continue;
       }
 
-      const emailExists = await this.checkEmailExists(t.email, schoolId);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        results.skippedCount++;
+        results.errors.push({ email, reason: "Invalid email format" });
+        continue;
+      }
+
+      if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+        results.skippedCount++;
+        results.errors.push({ email, reason: "Phone must be a valid 10-digit number starting with 6-9" });
+        continue;
+      }
+
+      const emailExists = await this.checkEmailExists(email, schoolId);
       if (emailExists) {
         results.skippedCount++;
-        results.errors.push({ email: t.email, reason: "Email already exists" });
+        results.errors.push({ email, reason: "Email already exists" });
         continue;
       }
 
@@ -216,11 +278,11 @@ export class TeacherService {
         const user = this.userRepo.create({
           school_id: schoolId,
           name: t.name.trim(),
-          email: t.email.trim(),
+          email,
           password: defaultPassword,
           role_id: getRoleId(UserRole.TEACHER),
           role: UserRole.TEACHER,
-          phone: t.phone ? String(t.phone).trim() : null,
+          phone: phone || null,
           is_active: true,
         });
 
@@ -228,7 +290,7 @@ export class TeacherService {
         results.addedCount++;
       } catch (err: any) {
         results.skippedCount++;
-        results.errors.push({ email: t.email, reason: err.message || "Failed to create teacher" });
+        results.errors.push({ email, reason: err.message || "Failed to create teacher" });
       }
     }
 

@@ -5,6 +5,7 @@ import {
   Put,
   Delete,
   Param,
+  Query,
   Body,
   Headers,
   BadRequestException,
@@ -17,13 +18,36 @@ import { toIntID } from "../../db/index.js";
 export class TeacherController {
   constructor(private readonly teacherService: TeacherService) {}
 
-  @Get()
-  async getTeachers(
+  @Get("export")
+  async exportTeachers(
     @Param("schoolId") schoolIdStr: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
     @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
-    return this.teacherService.getTeachers(schoolId, academicYearHeader);
+    return this.teacherService.getTeachers(schoolId, academicYearHeader, { search, status });
+  }
+
+  @Get()
+  async getTeachers(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+
+    return this.teacherService.getTeachers(schoolId, academicYearHeader, {
+      page,
+      limit,
+      search,
+      status,
+    });
   }
 
   @Post()
