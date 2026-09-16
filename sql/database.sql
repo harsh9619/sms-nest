@@ -13,7 +13,7 @@ CREATE SCHEMA IF NOT EXISTS public;
 
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM (
-    'super_admin', 'school_admin', 'teacher', 'student', 'parent'
+    'super_admin', 'school_admin', 'teacher', 'student', 'parent', 'principal'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

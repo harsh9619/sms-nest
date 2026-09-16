@@ -4,6 +4,7 @@ import { Repository, DataSource } from "typeorm";
 import { User } from "../../entities/user.entity.js";
 import { Student } from "../../entities/student.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
+import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 @Injectable()
 export class UserService {
@@ -12,10 +13,21 @@ export class UserService {
     private userRepo: Repository<User>,
     @InjectRepository(Student)
     private studentRepo: Repository<Student>,
-    private dataSource: DataSource
-  ) {}
+    private dataSource: DataSource,
+    private ayService: AcademicYearService
+  ) { }
 
-  async getUsers(schoolId: number | null, showAll: boolean) {
+  async getUsers(
+    schoolId: number | null,
+    showAll: boolean,
+    user?: any,
+    academicYearHeader?: string | number
+  ) {
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader ? String(academicYearHeader) : undefined);
+    }
+
     const qb = this.userRepo
       .createQueryBuilder("u")
       .leftJoinAndSelect("u.school", "s");
@@ -25,6 +37,14 @@ export class UserService {
       qb.andWhere("u.is_active = :isActive", { isActive: true });
     } else {
       qb.where("u.is_active = :isActive", { isActive: true });
+    }
+
+    if (sayId) {
+      qb.leftJoin(Student, "st", "(st.user_id = u.id OR st.parent_user_id = u.id)")
+        .andWhere("(u.role NOT IN (:...scopedRoles) OR st.school_academic_year_id = :sayId)", {
+          scopedRoles: ["student", "parent"],
+          sayId,
+        });
     }
 
     qb.orderBy("u.created_at", "DESC");
@@ -40,6 +60,7 @@ export class UserService {
       schoolName: u.school ? u.school.name : null,
       avatar: u.avatar_url,
       isActive: u.is_active,
+      schoolAcademicYearId: sayId ? String(sayId) : null,
     }));
   }
 

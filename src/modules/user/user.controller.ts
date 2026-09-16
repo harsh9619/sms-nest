@@ -7,24 +7,33 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   BadRequestException,
   NotFoundException,
+  UseGuards,
+  Req,
 } from "@nestjs/common";
 import { UserService } from "./user.service.js";
 import { toIntID } from "../../db/index.js";
+import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
 
-@Controller("api/:schoolId/users")
+@Controller(["api/:schoolId/users", "api/users"])
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async getUsers(
-    @Param("schoolId") schoolIdStr: string,
-    @Query("all") allStr?: string
+    @Req() req: any,
+    @Param("schoolId") paramSchoolId?: string,
+    @Query("schoolId") querySchoolId?: string,
+    @Query("all") allStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
-    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : null;
+    const rawSchoolId = paramSchoolId || querySchoolId;
+    const schoolId = rawSchoolId ? toIntID(String(rawSchoolId)) : null;
     const showAll = allStr === "true";
-    return this.userService.getUsers(schoolId, showAll);
+    return this.userService.getUsers(schoolId, showAll, req.user, toIntID(academicYearHeader));
   }
 
   @Post()
@@ -41,10 +50,10 @@ export class UserController {
       role === "admin"
         ? "school_admin"
         : role === "teacher"
-        ? "teacher"
-        : role === "student"
-        ? "student"
-        : "teacher";
+          ? "teacher"
+          : role === "student"
+            ? "student"
+            : "teacher";
 
     const schoolInt = schoolIdStr || body.schoolId ? toIntID(String(schoolIdStr || body.schoolId)) : null;
     if (dbRole !== "super_admin" && !schoolInt) {
@@ -90,10 +99,10 @@ export class UserController {
       role === "admin"
         ? "school_admin"
         : role === "teacher"
-        ? "teacher"
-        : role === "student"
-        ? "student"
-        : "teacher";
+          ? "teacher"
+          : role === "student"
+            ? "student"
+            : "teacher";
 
     const schoolInt = schoolIdStr || body.schoolId ? toIntID(String(schoolIdStr || body.schoolId)) : null;
     if (dbRole !== "super_admin" && !schoolInt) {

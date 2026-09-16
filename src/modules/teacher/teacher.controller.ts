@@ -18,6 +18,11 @@ import { toIntID } from "../../db/index.js";
 export class TeacherController {
   constructor(private readonly teacherService: TeacherService) {}
 
+  @Get("roles")
+  async getRoles() {
+    return this.teacherService.getRoles();
+  }
+
   @Get("export")
   async exportTeachers(
     @Param("schoolId") schoolIdStr: string,
@@ -56,7 +61,7 @@ export class TeacherController {
     @Body() body: any
   ) {
     const schoolId = toIntID(String(schoolIdStr));
-    const { name, email, phone, avatar, avatar_url, status } = body;
+    const { name, email, phone, avatar, avatar_url, status, roleId, role_id, role } = body;
 
     if (!name || !email) {
       throw new BadRequestException("Name and email are required.");
@@ -74,6 +79,8 @@ export class TeacherController {
         phone,
         avatar_url: avatar || avatar_url,
         status: status !== undefined ? Boolean(status) : undefined,
+        roleId: roleId || role_id,
+        role,
       });
     } catch (err: any) {
       if (err.code === "23505") {
@@ -97,7 +104,7 @@ export class TeacherController {
       throw new NotFoundException("Teacher not found");
     }
 
-    const { name, email, phone, avatar, avatar_url, status } = body;
+    const { name, email, phone, avatar, avatar_url, status, roleId, role_id, role } = body;
 
     if (email && existing.email.toLowerCase() !== email.toLowerCase()) {
       const emailExists = await this.teacherService.checkEmailExists(email, schoolId, teacherId);
@@ -113,6 +120,8 @@ export class TeacherController {
         phone: phone !== undefined ? phone : existing.phone,
         avatar_url: avatar || avatar_url || existing.avatar,
         status: status !== undefined ? Boolean(status) : existing.status,
+        roleId: roleId || role_id,
+        role,
       });
     } catch (err: any) {
       if (err.code === "23505") {

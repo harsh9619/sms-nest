@@ -7,6 +7,8 @@ import { getRoleId } from "../../common/utils/role.util.js";
 import fs from "fs";
 import path from "path";
 
+import { RoleMaster } from "../../entities/role-master.entity.js";
+
 export interface GetTeachersOptions {
   page?: number;
   limit?: number;
@@ -19,8 +21,20 @@ export class TeacherService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(RoleMaster)
+    private roleMasterRepo: Repository<RoleMaster>,
     private ayService: AcademicYearService
   ) { }
+
+  async getRoles() {
+    const roles = await this.roleMasterRepo.find({ order: { id: "ASC" } });
+    return roles.map((r) => ({
+      roleId: r.id,
+      roleName: r.name,
+      label: r.label,
+      description: r.description,
+    }));
+  }
 
   private processAvatarUrl(avatarInput?: string): string | null {
     if (!avatarInput) return null;
@@ -67,6 +81,7 @@ export class TeacherService {
 
     const qb = this.userRepo
       .createQueryBuilder("u")
+      .leftJoin("u.role_master", "rm")
       .select([
         "u.id AS id",
         "u.name AS name",
@@ -76,8 +91,13 @@ export class TeacherService {
         "u.created_at AS joinDate",
         "u.school_id AS schoolId",
         "u.is_active AS status",
+        "u.role_id AS roleId",
+        "COALESCE(rm.name, u.role::text) AS roleName",
       ])
-      .where("u.role = :role", { role: UserRole.TEACHER });
+      .where("(u.role IN (:...roles) OR rm.name IN (:...roleNames))", {
+        roles: [UserRole.TEACHER, UserRole.PRINCIPAL],
+        roleNames: ["teacher", "principal", "Teacher", "Principal"],
+      });
 
     if (schoolId) {
       qb.andWhere("u.school_id = :schoolId", { schoolId });
@@ -115,6 +135,8 @@ export class TeacherService {
       joinDate: t.joindate ? new Date(t.joindate).toISOString() : null,
       schoolId: t.schoolid ? String(t.schoolid) : null,
       status: t.status,
+      roleId: t.roleid ? Number(t.roleid) : getRoleId(UserRole.TEACHER),
+      roleName: t.rolename || UserRole.TEACHER,
       schoolAcademicYearId: sayId ? String(sayId) : null,
     }));
 
@@ -135,7 +157,11 @@ export class TeacherService {
 
   async getTeacherById(id: number) {
     const t = await this.userRepo.findOne({
-      where: { id, role: UserRole.TEACHER },
+      where: [
+        { id, role: UserRole.TEACHER },
+        { id, role: UserRole.PRINCIPAL },
+      ],
+      relations: { role_master: true },
     });
     if (!t) return null;
     return {
@@ -147,6 +173,8 @@ export class TeacherService {
       joinDate: t.created_at ? new Date(t.created_at).toISOString() : null,
       schoolId: t.school_id ? String(t.school_id) : null,
       status: t.is_active,
+      roleId: t.role_id ? Number(t.role_id) : getRoleId(UserRole.TEACHER),
+      roleName: t.role_master ? t.role_master.name : t.role || UserRole.TEACHER,
     };
   }
 
@@ -175,18 +203,50 @@ export class TeacherService {
       phone?: string;
       avatar_url?: string;
       status?: boolean;
+      roleId?: number | string;
+      role?: string;
     }
   ) {
     const defaultPassword = "password123";
     const processedAvatar = this.processAvatarUrl(data.avatar_url);
+
+    let roleMaster: RoleMaster | null = null;
+    if (data.roleId) {
+      roleMaster = await this.roleMasterRepo.findOne({ where: { id: Number(data.roleId) } });
+    }
+    if (!roleMaster && data.role) {
+      roleMaster = await this.roleMasterRepo.findOne({
+        where: [
+          { name: data.role },
+          { label: data.role },
+        ],
+      });
+    }
+
+    const validRoles = [
+      UserRole.SUPER_ADMIN,
+      UserRole.SCHOOL_ADMIN,
+      UserRole.TEACHER,
+      UserRole.STUDENT,
+      UserRole.PARENT,
+    ];
+
+    let userRoleStr = UserRole.TEACHER;
+    if (data.role && validRoles.includes(data.role as any)) {
+      userRoleStr = data.role as UserRole;
+    } else if (roleMaster && validRoles.includes(roleMaster.name as any)) {
+      userRoleStr = roleMaster.name as UserRole;
+    }
+
+    const computedRoleId = roleMaster ? roleMaster.id : (data.roleId ? Number(data.roleId) : getRoleId(userRoleStr));
 
     const user = this.userRepo.create({
       school_id: schoolId,
       name: data.name,
       email: data.email.trim(),
       password: defaultPassword,
-      role_id: getRoleId(UserRole.TEACHER),
-      role: UserRole.TEACHER,
+      role_id: computedRoleId,
+      role: userRoleStr,
       phone: data.phone || null,
       avatar_url: processedAvatar,
       is_active: data.status !== undefined ? Boolean(data.status) : true,
@@ -203,6 +263,8 @@ export class TeacherService {
       joinDate: saved.created_at ? new Date(saved.created_at).toISOString() : new Date().toISOString(),
       schoolId: saved.school_id ? String(saved.school_id) : String(schoolId),
       status: saved.is_active,
+      roleId: saved.role_id,
+      roleName: roleMaster ? roleMaster.name : saved.role,
     };
   }
 
@@ -214,9 +276,42 @@ export class TeacherService {
       phone?: string;
       avatar_url?: string;
       status?: boolean;
+      roleId?: number | string;
+      role?: string;
     }
   ) {
     const processedAvatar = data.avatar_url !== undefined ? this.processAvatarUrl(data.avatar_url) : undefined;
+
+    let roleMaster: RoleMaster | null = null;
+    if (data.roleId) {
+      roleMaster = await this.roleMasterRepo.findOne({ where: { id: Number(data.roleId) } });
+    }
+    if (!roleMaster && data.role) {
+      roleMaster = await this.roleMasterRepo.findOne({
+        where: [
+          { name: data.role },
+          { label: data.role },
+        ],
+      });
+    }
+
+    const validRoles = [
+      UserRole.SUPER_ADMIN,
+      UserRole.SCHOOL_ADMIN,
+      UserRole.TEACHER,
+      UserRole.STUDENT,
+      UserRole.PARENT,
+      UserRole.PRINCIPAL
+    ];
+
+    let userRoleStr: string | undefined = undefined;
+    if (data.role) {
+      userRoleStr = validRoles.includes(data.role as any) ? data.role : UserRole.TEACHER;
+    } else if (roleMaster) {
+      userRoleStr = validRoles.includes(roleMaster.name as any) ? roleMaster.name : UserRole.TEACHER;
+    }
+
+    const computedRoleId = roleMaster ? roleMaster.id : (data.roleId ? Number(data.roleId) : (userRoleStr ? getRoleId(userRoleStr) : undefined));
 
     await this.userRepo.update(id, {
       ...(data.name && { name: data.name }),
@@ -224,6 +319,8 @@ export class TeacherService {
       ...(data.phone !== undefined && { phone: data.phone }),
       ...(processedAvatar !== undefined && { avatar_url: processedAvatar }),
       ...(data.status !== undefined && { is_active: Boolean(data.status) }),
+      ...(computedRoleId !== undefined && { role_id: computedRoleId }),
+      ...(userRoleStr !== undefined && { role: userRoleStr }),
     });
 
     return this.getTeacherById(id);
@@ -235,7 +332,7 @@ export class TeacherService {
 
   async bulkCreateTeachers(
     schoolId: number,
-    teachers: Array<{ name: string; email: string; phone?: string }>
+    teachers: Array<{ name: string; email: string; phone?: string; roleId?: number | string; role?: string }>
   ) {
     const defaultPassword = "password123";
     const results = {
@@ -243,6 +340,16 @@ export class TeacherService {
       skippedCount: 0,
       errors: [] as Array<{ email: string; reason: string }>,
     };
+
+    const allRoles = await this.roleMasterRepo.find();
+    const validRoles = [
+      UserRole.SUPER_ADMIN,
+      UserRole.SCHOOL_ADMIN,
+      UserRole.TEACHER,
+      UserRole.STUDENT,
+      UserRole.PARENT,
+      UserRole.PRINCIPAL,
+    ];
 
     for (const t of teachers) {
       const email = t.email ? String(t.email).trim().toLowerCase() : "";
@@ -275,13 +382,30 @@ export class TeacherService {
       }
 
       try {
+        let matchedRole = t.roleId
+          ? allRoles.find((r) => r.id === Number(t.roleId))
+          : undefined;
+
+        if (!matchedRole && t.role) {
+          const searchRoleStr = String(t.role).trim().toLowerCase();
+          matchedRole = allRoles.find(
+            (r) => r.name.toLowerCase() === searchRoleStr || r.label.toLowerCase() === searchRoleStr
+          );
+        }
+
+        const userRoleStr = t.role && validRoles.includes(t.role as any)
+          ? t.role
+          : (matchedRole && validRoles.includes(matchedRole.name as any) ? matchedRole.name : UserRole.TEACHER);
+
+        const computedRoleId = matchedRole ? matchedRole.id : (t.roleId ? Number(t.roleId) : getRoleId(userRoleStr));
+
         const user = this.userRepo.create({
           school_id: schoolId,
           name: t.name.trim(),
           email,
           password: defaultPassword,
-          role_id: getRoleId(UserRole.TEACHER),
-          role: UserRole.TEACHER,
+          role_id: computedRoleId,
+          role: userRoleStr,
           phone: phone || null,
           is_active: true,
         });

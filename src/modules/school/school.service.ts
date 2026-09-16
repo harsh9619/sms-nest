@@ -13,7 +13,7 @@ export class SchoolService {
     private themeRepo: Repository<MasterTheme>
   ) {}
 
-  async getSchools(schoolId?: number, search?: string) {
+  async getSchools(schoolId?: number, search?: string, user?: any) {
     const query = this.schoolRepo
       .createQueryBuilder("s")
       .leftJoinAndSelect("s.academic_years", "say")
@@ -24,6 +24,8 @@ export class SchoolService {
 
     if (schoolId) {
       query.andWhere("s.id = :schoolId", { schoolId });
+    } else if (user && user.role !== "admin" && user.role !== "super_admin" && user.schoolId) {
+      query.andWhere("s.id = :userSchoolId", { userSchoolId: Number(user.schoolId) });
     }
 
     if (search) {

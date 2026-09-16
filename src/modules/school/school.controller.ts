@@ -7,10 +7,13 @@ import {
   Param,
   Query,
   Body,
+  Req,
+  UseGuards,
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
 import { SchoolService } from "./school.service.js";
+import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
 
 @Controller()
 export class SchoolController {
@@ -27,12 +30,14 @@ export class SchoolController {
   }
 
   @Get("api/schools")
+  @UseGuards(JwtAuthGuard)
   async getSchools(
+    @Req() req: any,
     @Query("schoolId") schoolId?: string,
     @Query("search") search?: string
   ) {
     const parsedId = schoolId ? Number(schoolId) : undefined;
-    return this.schoolService.getSchools(parsedId, search);
+    return this.schoolService.getSchools(parsedId, search, req.user);
   }
 
   @Get("api/schools/:id")
