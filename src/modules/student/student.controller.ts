@@ -215,10 +215,37 @@ export class StudentController {
       admissionDate,
       admission_date,
       school_academic_year_id,
+      casteMasterId,
+      caste_master_id,
+      casteCategory,
+      caste_category,
+      registrationNo,
+      registration_no,
+      academicYear,
+      academic_year,
+      aadharNo,
+      aadhar_no,
+      medium,
+      fatherName,
+      father_name,
+      fatherOccupation,
+      father_occupation,
+      fatherQualification,
+      father_qualification,
+      motherName,
+      mother_name,
+      motherOccupation,
+      mother_occupation,
+      motherQualification,
+      mother_qualification,
+      whatsappNo,
+      whatsapp_no,
+      scholarNo,
+      scholar_no,
     } = body;
 
     const finalName = name || existing.name;
-    const finalEmail = email || existing.email;
+    const finalEmail = email !== undefined ? email : existing.email;
     const finalRollNumber = rollNumber !== undefined ? rollNumber : (roll_no !== undefined ? roll_no : existing.roll_no);
     const finalParentName = parentName !== undefined ? parentName : (guardian_name !== undefined ? guardian_name : existing.guardian_name);
     const finalParentPhone = parentPhone !== undefined ? parentPhone : (guardian_phone !== undefined ? guardian_phone : existing.guardian_phone);
@@ -237,9 +264,9 @@ export class StudentController {
       );
     }
 
-    if (finalEmail && existing.email.toLowerCase() !== finalEmail.toLowerCase()) {
+    if (finalEmail && String(finalEmail).trim() && existing.email.toLowerCase() !== String(finalEmail).trim().toLowerCase()) {
       const emailExists = await this.studentService.checkEmailExists(
-        finalEmail,
+        String(finalEmail).trim(),
         schoolId,
         userId
       );
@@ -279,6 +306,20 @@ export class StudentController {
         bloodGroup: finalBloodGroup,
         admissionDate: finalAdmissionDate,
         school_academic_year_id: school_academic_year_id ? toIntID(String(school_academic_year_id)) : (existing.school_academic_year_id ? toIntID(existing.school_academic_year_id) : undefined),
+        casteMasterId: casteMasterId !== undefined ? casteMasterId : caste_master_id,
+        casteCategory: casteCategory !== undefined ? casteCategory : caste_category,
+        registrationNo: registrationNo !== undefined ? registrationNo : registration_no,
+        academicYear: academicYear !== undefined ? academicYear : academic_year,
+        aadharNo: aadharNo !== undefined ? aadharNo : aadhar_no,
+        medium,
+        fatherName: fatherName !== undefined ? fatherName : father_name,
+        fatherOccupation: fatherOccupation !== undefined ? fatherOccupation : father_occupation,
+        fatherQualification: fatherQualification !== undefined ? fatherQualification : father_qualification,
+        motherName: motherName !== undefined ? motherName : mother_name,
+        motherOccupation: motherOccupation !== undefined ? motherOccupation : mother_occupation,
+        motherQualification: motherQualification !== undefined ? motherQualification : mother_qualification,
+        whatsappNo: whatsappNo !== undefined ? whatsappNo : whatsapp_no,
+        scholarNo: scholarNo !== undefined ? scholarNo : scholar_no,
       });
 
       return await this.studentService.getStudentById(studentId);

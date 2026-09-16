@@ -9,6 +9,8 @@ import { StudentController } from "./student.controller.js";
 import { StudentService } from "./student.service.js";
 import { AcademicYearModule } from "../academic-year/academic-year.module.js";
 
+import { CasteMaster } from "../../entities/caste-master.entity.js";
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -16,7 +18,8 @@ import { AcademicYearModule } from "../academic-year/academic-year.module.js";
       User,
       Class,
       ClassMaster,
-      DivisionMaster
+      DivisionMaster,
+      CasteMaster,
     ]),
     AcademicYearModule
   ],

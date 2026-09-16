@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { Student } from "../../entities/student.entity.js";
@@ -8,6 +8,7 @@ import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 import { ClassMaster } from "../../entities/class-master.entity.js";
 import { DivisionMaster } from "../../entities/division-master.entity.js";
+import { CasteMaster } from "../../entities/caste-master.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
 
 export interface GetStudentsOptions {
@@ -31,6 +32,8 @@ export class StudentService {
     private classMasterRepo: Repository<ClassMaster>,
     @InjectRepository(DivisionMaster)
     private divisionMasterRepo: Repository<DivisionMaster>,
+    @InjectRepository(CasteMaster)
+    private casteMasterRepo: Repository<CasteMaster>,
     private ayService: AcademicYearService,
     private dataSource: DataSource
   ) { }
@@ -47,6 +50,7 @@ export class StudentService {
       .innerJoinAndSelect("st.user", "u")
       .leftJoinAndSelect("st.class", "c")
       .leftJoinAndSelect("st.division_master", "dm")
+      .leftJoinAndSelect("st.caste_master", "cm")
       .leftJoinAndSelect("st.school_academic_year", "say")
       .leftJoinAndSelect("say.academic_year", "ay")
       .where("u.is_active = :isActive", { isActive: true })
@@ -96,6 +100,7 @@ export class StudentService {
       .innerJoinAndSelect("st.user", "u")
       .leftJoinAndSelect("st.class", "c")
       .leftJoinAndSelect("st.division_master", "dm")
+      .leftJoinAndSelect("st.caste_master", "cm")
       .leftJoinAndSelect("st.school_academic_year", "say")
       .leftJoinAndSelect("say.academic_year", "ay")
       .where("u.is_active = :isActive", { isActive: true })
@@ -132,6 +137,7 @@ export class StudentService {
       .innerJoinAndSelect("st.user", "u")
       .leftJoinAndSelect("st.class", "c")
       .leftJoinAndSelect("st.division_master", "dm")
+      .leftJoinAndSelect("st.caste_master", "cm")
       .leftJoinAndSelect("st.school_academic_year", "say")
       .leftJoinAndSelect("say.academic_year", "ay")
       .where("st.id = :id", { id })
@@ -273,7 +279,19 @@ export class StudentService {
         sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
       }
 
-      const studentEmail = email ? email.toLowerCase() : `student_${Date.now()}_${Math.floor(Math.random() * 1000)}@school.com`;
+      let studentEmail = "";
+      if (email && String(email).trim()) {
+        const cleanEmail = String(email).trim().toLowerCase();
+        const existingUser = await queryRunner.manager.findOne(User, {
+          where: { email: cleanEmail, school_id: schoolId },
+        });
+        if (existingUser) {
+          throw new BadRequestException(`Email "${cleanEmail}" is already registered.`);
+        }
+        studentEmail = cleanEmail;
+      } else {
+        studentEmail = `student_${Date.now()}_${Math.floor(Math.random() * 1000)}@school.com`;
+      }
 
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
@@ -361,6 +379,20 @@ export class StudentService {
         parent_user_id: parentUser ? parentUser.id : null,
         class_id: classId || null,
         division_master_id: divisionMasterId || null,
+        caste_master_id: data.casteMasterId || data.caste_master_id || null,
+        caste_category: data.casteCategory || data.caste_category || null,
+        registration_no: data.registrationNo || data.registration_no || null,
+        academic_year: data.academicYear || data.academic_year || null,
+        aadhar_no: data.aadharNo || data.aadhar_no || null,
+        medium: data.medium || null,
+        father_name: data.fatherName || data.father_name || parentName || null,
+        father_occupation: data.fatherOccupation || data.father_occupation || null,
+        father_qualification: data.fatherQualification || data.father_qualification || null,
+        mother_name: data.motherName || data.mother_name || null,
+        mother_occupation: data.motherOccupation || data.mother_occupation || null,
+        mother_qualification: data.motherQualification || data.mother_qualification || null,
+        whatsapp_no: data.whatsappNo || data.whatsapp_no || null,
+        scholar_no: data.scholarNo || data.scholar_no || null,
         roll_no: finalRollNo,
         dob: dobValue,
         gender: genderValue,
@@ -410,9 +442,24 @@ export class StudentService {
         school_academic_year_id,
       } = data;
 
+      let cleanEmail: string | undefined = undefined;
+      if (email !== undefined) {
+        const trimmedEmail = String(email).trim();
+        if (trimmedEmail) {
+          cleanEmail = trimmedEmail.toLowerCase();
+          const existingUser = await queryRunner.manager.createQueryBuilder(User, "u")
+            .where("LOWER(u.email) = LOWER(:email)", { email: cleanEmail })
+            .andWhere("u.id != :userId", { userId })
+            .getOne();
+          if (existingUser) {
+            throw new BadRequestException(`Email "${cleanEmail}" is already in use by another user.`);
+          }
+        }
+      }
+
       await queryRunner.manager.update(User, userId, {
         name,
-        email: email ? email.toLowerCase() : undefined,
+        email: cleanEmail !== undefined ? cleanEmail : undefined,
         phone: phone !== undefined ? phone : undefined,
         role_id: getRoleId(UserRole.STUDENT),
       });
@@ -479,6 +526,49 @@ export class StudentService {
         admission_date: admissionDateValue,
       };
 
+      if (data.casteMasterId !== undefined || data.caste_master_id !== undefined) {
+        studentUpdate.caste_master_id = data.casteMasterId || data.caste_master_id || null;
+      }
+      if (data.casteCategory !== undefined || data.caste_category !== undefined) {
+        studentUpdate.caste_category = data.casteCategory || data.caste_category || null;
+      }
+      if (data.registrationNo !== undefined || data.registration_no !== undefined) {
+        studentUpdate.registration_no = data.registrationNo || data.registration_no || null;
+      }
+      if (data.academicYear !== undefined || data.academic_year !== undefined) {
+        studentUpdate.academic_year = data.academicYear || data.academic_year || null;
+      }
+      if (data.aadharNo !== undefined || data.aadhar_no !== undefined) {
+        studentUpdate.aadhar_no = data.aadharNo || data.aadhar_no || null;
+      }
+      if (data.medium !== undefined) {
+        studentUpdate.medium = data.medium || null;
+      }
+      if (data.fatherName !== undefined || data.father_name !== undefined) {
+        studentUpdate.father_name = data.fatherName || data.father_name || null;
+      }
+      if (data.fatherOccupation !== undefined || data.father_occupation !== undefined) {
+        studentUpdate.father_occupation = data.fatherOccupation || data.father_occupation || null;
+      }
+      if (data.fatherQualification !== undefined || data.father_qualification !== undefined) {
+        studentUpdate.father_qualification = data.fatherQualification || data.father_qualification || null;
+      }
+      if (data.motherName !== undefined || data.mother_name !== undefined) {
+        studentUpdate.mother_name = data.motherName || data.mother_name || null;
+      }
+      if (data.motherOccupation !== undefined || data.mother_occupation !== undefined) {
+        studentUpdate.mother_occupation = data.motherOccupation || data.mother_occupation || null;
+      }
+      if (data.motherQualification !== undefined || data.mother_qualification !== undefined) {
+        studentUpdate.mother_qualification = data.motherQualification || data.mother_qualification || null;
+      }
+      if (data.whatsappNo !== undefined || data.whatsapp_no !== undefined) {
+        studentUpdate.whatsapp_no = data.whatsappNo || data.whatsapp_no || null;
+      }
+      if (data.scholarNo !== undefined || data.scholar_no !== undefined) {
+        studentUpdate.scholar_no = data.scholarNo || data.scholar_no || null;
+      }
+
       if (parentUser) {
         studentUpdate.parent_user_id = parentUser.id;
       }
@@ -498,12 +588,67 @@ export class StudentService {
       await queryRunner.manager.update(Student, studentId, studentUpdate);
 
       await queryRunner.commitTransaction();
+      return { success: true };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
     } finally {
       await queryRunner.release();
     }
+  }
+
+  private formatStudentResponse(st: Student) {
+    return {
+      id: String(st.id),
+      school_id: st.school_id,
+      school_academic_year_id: st.school_academic_year_id,
+      academic_year_id: st.school_academic_year?.academic_year_id,
+      user_id: st.user_id,
+      parent_user_id: st.parent_user_id,
+      name: st.user ? st.user.name : "",
+      email: st.user ? st.user.email : "",
+      phone: st.user ? st.user.phone || "" : "",
+      class_id: st.class_id ? String(st.class_id) : "",
+      class_name: st.class ? st.class.name : "",
+      class: st.class ? st.class.name : "",
+      division_master_id: st.division_master_id ? String(st.division_master_id) : "",
+      division_id: st.division_master_id ? String(st.division_master_id) : "",
+      division_name: st.division_master ? st.division_master.name : (st.class ? st.class.division || "" : ""),
+      caste_master_id: st.caste_master_id ? String(st.caste_master_id) : "",
+      caste_name: st.caste_master ? st.caste_master.name : "",
+      caste_code: st.caste_master ? st.caste_master.code : "",
+      caste_category: st.caste_category || (st.caste_master ? st.caste_master.name : ""),
+      registration_no: st.registration_no || "",
+      academic_year: st.academic_year || "",
+      aadhar_no: st.aadhar_no || "",
+      medium: st.medium || "",
+      father_name: st.father_name || st.guardian_name || "",
+      father_occupation: st.father_occupation || "",
+      father_qualification: st.father_qualification || "",
+      mother_name: st.mother_name || "",
+      mother_occupation: st.mother_occupation || "",
+      mother_qualification: st.mother_qualification || "",
+      whatsapp_no: st.whatsapp_no || "",
+      scholar_no: st.scholar_no || "",
+      roll_no: st.roll_no || "",
+      rollNumber: st.roll_no || "",
+      dob: st.dob || "",
+      dateOfBirth: st.dob || "",
+      gender: st.gender || "other",
+      blood_group: st.blood_group || "",
+      bloodGroup: st.blood_group || "",
+      address: st.address || "",
+      guardian_name: st.guardian_name || st.father_name || "",
+      guardian_phone: st.guardian_phone || "",
+      parent_name: st.guardian_name || st.father_name || "",
+      parentName: st.guardian_name || st.father_name || "",
+      parent_phone: st.guardian_phone || "",
+      parentPhone: st.guardian_phone || "",
+      admission_date: st.admission_date || "",
+      admissionDate: st.admission_date || "",
+      created_at: st.created_at,
+      updated_at: st.updated_at,
+    };
   }
 
   async deleteStudent(userId: number) {
@@ -594,7 +739,7 @@ export class StudentService {
       const className = st.class || st.className;
       const section = st.section || st.division || "A";
       let rollNumber = st.rollNumber || st.roll_no;
-      const parentName = st.parentName || st.guardian_name || st.parent_name || st.parentname;
+      const parentName = st.parentName || st.guardian_name || st.parent_name || st.parentname || st.father_name || st.fatherName;
       const parentPhone = st.parentPhone || st.guardian_phone || st.parent_phone || st.parentphone;
       const dateOfBirth = st.dateOfBirth || st.dob;
       const bloodGroup = st.bloodGroup || st.blood_group;
@@ -604,11 +749,25 @@ export class StudentService {
       const rawDivision = st.division_master_id || st.divisionMasterId || st.division || st.section || section;
       const schoolAcademicYearId = st.school_academic_year_id || st.schoolAcademicYearId;
 
-      if (!name || !email || !className || !section || !parentName) {
+      const casteCategory = st.caste_category || st.casteCategory || st.caste;
+      const subCaste = st.sub_caste || st.subCaste;
+      const registrationNo = st.registration_no || st.registrationNo;
+      const academicYear = st.academic_year || st.academicYear;
+      const aadharNo = st.aadhar_no || st.aadharNo;
+      const medium = st.medium;
+      const fatherName = st.father_name || st.fatherName;
+      const fatherOccupation = st.father_occupation || st.fatherOccupation;
+      const fatherQualification = st.father_qualification || st.fatherQualification;
+      const motherName = st.mother_name || st.motherName;
+      const motherOccupation = st.mother_occupation || st.motherOccupation;
+      const motherQualification = st.mother_qualification || st.motherQualification;
+      const whatsappNo = st.whatsapp_no || st.whatsappNo;
+      const scholarNo = st.scholar_no || st.scholarNo;
+
+      if (!name || !className || !section || !parentName) {
         results.skippedCount++;
         const missing = [];
         if (!name) missing.push("Name");
-        if (!email) missing.push("Email");
         if (!className) missing.push("Class");
         if (!section) missing.push("Section/Division");
         if (!parentName) missing.push("Parent Name");
@@ -616,16 +775,18 @@ export class StudentService {
         continue;
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        results.skippedCount++;
-        results.errors.push({ email, reason: "Invalid email format" });
-        continue;
+      if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          results.skippedCount++;
+          results.errors.push({ email, reason: "Invalid email format" });
+          continue;
+        }
       }
 
       if (parentPhone && !/^[6-9]\d{9}$/.test(String(parentPhone).trim())) {
         results.skippedCount++;
-        results.errors.push({ email, reason: "Guardian phone must be a valid 10-digit number starting with 6-9" });
+        results.errors.push({ email: email || "N/A", reason: "Guardian phone must be a valid 10-digit number starting with 6-9" });
         continue;
       }
 
@@ -650,7 +811,18 @@ export class StudentService {
         }
       }
 
-      // 3. Normalize Gender (m / Male / male -> male; f / Female / female -> female; o / Other / other -> other)
+      // 3. Resolve CasteMasterId from Caste Category Name/Code
+      let casteMasterId: number | undefined = st.caste_master_id || st.casteMasterId;
+      if (!casteMasterId && casteCategory) {
+        const casteMatch = await this.casteMasterRepo.createQueryBuilder("cm")
+          .where("LOWER(cm.name) = LOWER(:c) OR LOWER(cm.code) = LOWER(:c)", { c: String(casteCategory).trim() })
+          .getOne();
+        if (casteMatch) {
+          casteMasterId = casteMatch.id;
+        }
+      }
+
+      // 4. Normalize Gender (m / Male / male -> male; f / Female / female -> female; o / Other / other -> other)
       let normalizedGender = "male";
       if (rawGender === "m" || rawGender === "male") {
         normalizedGender = "male";
@@ -660,7 +832,7 @@ export class StudentService {
         normalizedGender = "other";
       }
 
-      // 4. Auto-generate or validate Roll Number
+      // 5. Auto-generate or validate Roll Number
       if (classId) {
         if (!rollNumber) {
           let nextRoll = classNextRollMap.get(classId);
@@ -690,12 +862,12 @@ export class StudentService {
         }
       }
 
-      // 5. Check duplicate roll number if specified explicitly or generated
+      // 6. Check duplicate roll number if specified explicitly or generated
       if (classId && rollNumber) {
         const rollExists = await this.checkRollNumberExists(schoolId, classId, String(rollNumber));
         if (rollExists) {
           results.skippedCount++;
-          results.errors.push({ email, reason: `Roll number ${rollNumber} already exists in class` });
+          results.errors.push({ email: email || "N/A", reason: `Roll number ${rollNumber} already exists in class` });
           continue;
         }
       }
@@ -705,10 +877,24 @@ export class StudentService {
       try {
         await this.createStudent(schoolId, academicYearHeader, {
           name: String(name).trim(),
-          email: String(email).trim(),
+          email: email ? String(email).trim() : undefined,
           phone: st.phone ? String(st.phone).trim() : undefined,
           classId,
           divisionMasterId,
+          casteMasterId,
+          casteCategory: subCaste || casteCategory ? String(subCaste || casteCategory).trim() : undefined,
+          registrationNo: registrationNo ? String(registrationNo).trim() : undefined,
+          academicYear: academicYear ? String(academicYear).trim() : undefined,
+          aadharNo: aadharNo ? String(aadharNo).trim() : undefined,
+          medium: medium ? String(medium).trim() : undefined,
+          fatherName: fatherName ? String(fatherName).trim() : undefined,
+          fatherOccupation: fatherOccupation ? String(fatherOccupation).trim() : undefined,
+          fatherQualification: fatherQualification ? String(fatherQualification).trim() : undefined,
+          motherName: motherName ? String(motherName).trim() : undefined,
+          motherOccupation: motherOccupation ? String(motherOccupation).trim() : undefined,
+          motherQualification: motherQualification ? String(motherQualification).trim() : undefined,
+          whatsappNo: whatsappNo ? String(whatsappNo).trim() : undefined,
+          scholarNo: scholarNo ? String(scholarNo).trim() : undefined,
           rollNumber: rollNumber ? String(rollNumber).trim() : undefined,
           parentName: parentName ? String(parentName).trim() : undefined,
           parentPhone: parentPhone ? String(parentPhone).trim() : undefined,
@@ -723,49 +909,11 @@ export class StudentService {
         results.addedCount++;
       } catch (err: any) {
         results.skippedCount++;
-        results.errors.push({ email, reason: err.message || "Failed to create student" });
+        results.errors.push({ email: email || "N/A", reason: err.message || "Failed to create student" });
       }
     }
 
     return results;
-  }
-
-  private formatStudentResponse(st: Student) {
-    return {
-      id: String(st.id),
-      school_id: st.school_id,
-      school_academic_year_id: st.school_academic_year_id,
-      academic_year_id: st.school_academic_year?.academic_year_id,
-      user_id: st.user_id,
-      parent_user_id: st.parent_user_id,
-      name: st.user ? st.user.name : "",
-      email: st.user ? st.user.email : "",
-      phone: st.user ? st.user.phone || "" : "",
-      class_id: st.class_id ? String(st.class_id) : "",
-      class_name: st.class ? st.class.name : "",
-      class: st.class ? st.class.name : "",
-      division_master_id: st.division_master_id ? String(st.division_master_id) : "",
-      division_id: st.division_master_id ? String(st.division_master_id) : "",
-      division_name: st.division_master ? st.division_master.name : (st.class ? st.class.division || "" : ""),
-      roll_no: st.roll_no || "",
-      rollNumber: st.roll_no || "",
-      dob: st.dob || "",
-      dateOfBirth: st.dob || "",
-      gender: st.gender || "other",
-      blood_group: st.blood_group || "",
-      bloodGroup: st.blood_group || "",
-      address: st.address || "",
-      guardian_name: st.guardian_name || "",
-      guardian_phone: st.guardian_phone || "",
-      parent_name: st.guardian_name || "",
-      parentName: st.guardian_name || "",
-      parent_phone: st.guardian_phone || "",
-      parentPhone: st.guardian_phone || "",
-      admission_date: st.admission_date || "",
-      admissionDate: st.admission_date || "",
-      created_at: st.created_at,
-      updated_at: st.updated_at,
-    };
   }
 }
 

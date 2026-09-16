@@ -163,6 +163,23 @@ ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.division_masters', 'id'), MAX(id), TRUE) FROM public.division_masters;
 
+-- ==========================
+-- CASTE MASTERS (global)
+-- ==========================
+
+INSERT INTO caste_masters (id, name, code, description)
+OVERRIDING SYSTEM VALUE VALUES
+  (1, 'General',  'GEN',   'General Category'),
+  (2, 'O.B.C.',   'OBC',   'Other Backward Class'),
+  (3, 'S.C.',     'SC',    'Scheduled Caste'),
+  (4, 'S.T.',     'ST',    'Scheduled Tribe'),
+  (5, 'Minority', 'MIN',   'Minority Community'),
+  (6, 'B.C.',     'BC',    'Backward Class')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('public.caste_masters', 'id'), MAX(id), TRUE) FROM public.caste_masters;
+
+
 -- =======================
 -- SCHOOL CLASSES
 -- =======================

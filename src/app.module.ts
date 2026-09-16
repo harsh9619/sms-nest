@@ -27,6 +27,7 @@ import { ClassTeacher } from "./entities/class-teacher.entity.js";
 import { SubjectTeacher } from "./entities/subject-teacher.entity.js";
 import { DivisionMaster } from "./entities/division-master.entity.js";
 import { RoleMaster } from "./entities/role-master.entity.js";
+import { CasteMaster } from "./entities/caste-master.entity.js";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { SchoolModule } from "./modules/school/school.module.js";
@@ -43,6 +44,7 @@ import { HomeworkModule } from "./modules/homework/homework.module.js";
 import { NoticeModule } from "./modules/notice/notice.module.js";
 import { MarkModule } from "./modules/mark/mark.module.js";
 import { AcademicYearModule } from "./modules/academic-year/academic-year.module.js";
+import { CasteModule } from "./modules/caste/caste.module.js";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
 
@@ -86,6 +88,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               SubjectTeacher,
               DivisionMaster,
               RoleMaster,
+              CasteMaster,
             ],
             synchronize: false,
             extra: {
@@ -128,6 +131,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             SubjectTeacher,
             DivisionMaster,
             RoleMaster,
+            CasteMaster,
           ],
           synchronize: false,
           extra: {
@@ -153,6 +157,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
     NoticeModule,
     MarkModule,
     AcademicYearModule,
+    CasteModule,
   ],
 })
 export class AppModule implements NestModule {

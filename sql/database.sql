@@ -244,6 +244,21 @@ CREATE TABLE IF NOT EXISTS division_masters (
 );
 
 -- ============================================
+-- TABLE: caste_masters  (global caste reference)
+-- Canonical list of castes and categories
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS caste_masters (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE,   -- e.g. 'General', 'OBC', 'SC', 'ST', 'Minority'
+  code        VARCHAR(20)  NOT NULL UNIQUE,   -- e.g. 'GEN', 'OBC', 'SC', 'ST', 'MIN'
+  description TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+
+-- ============================================
 -- TABLE: school_classes
 -- Map of classes/divisions per school and academic year
 -- ============================================
@@ -344,6 +359,20 @@ CREATE TABLE IF NOT EXISTS students (
   parent_user_id          INT           REFERENCES users(id)                        ON DELETE CASCADE,
   class_id                INT           REFERENCES school_classes(id) ON DELETE SET NULL,
   division_master_id      INT           REFERENCES division_masters(id) ON DELETE SET NULL,
+  caste_master_id         INT           REFERENCES caste_masters(id) ON DELETE SET NULL,
+  caste_category          VARCHAR(50),
+  registration_no         VARCHAR(50),
+  academic_year           VARCHAR(20),
+  aadhar_no               VARCHAR(20),
+  medium                  VARCHAR(20),
+  father_name             VARCHAR(150),
+  father_occupation       VARCHAR(100),
+  father_qualification    VARCHAR(100),
+  mother_name             VARCHAR(150),
+  mother_occupation       VARCHAR(100),
+  mother_qualification    VARCHAR(100),
+  whatsapp_no             VARCHAR(20),
+  scholar_no              VARCHAR(50),
   roll_no                 VARCHAR(20),
   dob                     DATE,
   gender                  gender_type,
@@ -361,6 +390,7 @@ CREATE INDEX IF NOT EXISTS idx_students_school_id           ON students(school_i
 CREATE INDEX IF NOT EXISTS idx_students_school_acad_year_id ON students(school_academic_year_id);
 CREATE INDEX IF NOT EXISTS idx_students_class_id            ON students(class_id);
 CREATE INDEX IF NOT EXISTS idx_students_division_master_id ON students(division_master_id);
+CREATE INDEX IF NOT EXISTS idx_students_caste_master_id    ON students(caste_master_id);
 CREATE INDEX IF NOT EXISTS idx_students_user_id             ON students(user_id);
 CREATE INDEX IF NOT EXISTS idx_students_parent_user_id      ON students(parent_user_id);
 
@@ -566,7 +596,7 @@ DO $$ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'schools', 'users', 'academic_years', 'school_academic_years',
-    'class_masters', 'subject_masters', 'division_masters',
+    'class_masters', 'subject_masters', 'division_masters', 'caste_masters',
     'school_classes', 'school_class_subjects', 'school_class_teachers', 'school_subject_teachers',
     'students', 'timetables', 'homework', 'fees',
     'salary_structures', 'salary_records', 'notices'

@@ -61,6 +61,37 @@ async function ensureDatabaseExists() {
 async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   await appQuery(`ALTER TABLE school_classes DROP COLUMN IF EXISTS teacher_id`);
   await appQuery(`ALTER TABLE students ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE`);
+
+  // Ensure caste_masters table exists
+  await appQuery(`
+    CREATE TABLE IF NOT EXISTS caste_masters (
+      id          SERIAL PRIMARY KEY,
+      name        VARCHAR(100) NOT NULL UNIQUE,
+      code        VARCHAR(20)  NOT NULL UNIQUE,
+      description TEXT,
+      created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+    );
+  `);
+
+  // Ensure new student columns exist
+  await appQuery(`
+    ALTER TABLE students
+      ADD COLUMN IF NOT EXISTS caste_master_id     INT REFERENCES caste_masters(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS caste_category      VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS registration_no     VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS academic_year        VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS aadhar_no           VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS medium              VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS father_name         VARCHAR(150),
+      ADD COLUMN IF NOT EXISTS father_occupation   VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS father_qualification VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS mother_name         VARCHAR(150),
+      ADD COLUMN IF NOT EXISTS mother_occupation   VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS mother_qualification VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS whatsapp_no         VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS scholar_no          VARCHAR(50);
+  `);
 }
 
 const ROLE_MAP: Record<string, number> = {
@@ -503,6 +534,28 @@ async function initializeDatabase() {
         );
       }
       console.log("✅ division_masters seeded.");
+    }
+
+    // --- Seed Caste Masters (global lookup table) ---
+    if (await isTableEmpty("caste_masters")) {
+      console.log("⏳ Seeding caste_masters...");
+      const casteMasters = [
+        { id: 1, name: "General",  code: "GEN",   description: "General Category" },
+        { id: 2, name: "O.B.C.",   code: "OBC",   description: "Other Backward Class" },
+        { id: 3, name: "S.C.",     code: "SC",    description: "Scheduled Caste" },
+        { id: 4, name: "S.T.",     code: "ST",    description: "Scheduled Tribe" },
+        { id: 5, name: "Minority", code: "MIN",   description: "Minority Community" },
+        { id: 6, name: "B.C.",     code: "BC",    description: "Backward Class" },
+      ];
+      for (const cm of casteMasters) {
+        await appQuery(
+          `INSERT INTO caste_masters (id, name, code, description)
+           OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO NOTHING`,
+          [cm.id, cm.name, cm.code, cm.description]
+        );
+      }
+      console.log("✅ caste_masters seeded.");
     }
 
     // --- Migrate Classes & Class Subjects ---
