@@ -101,8 +101,8 @@ export class StudentController {
     const finalBloodGroup = bloodGroup || blood_group;
     const finalAdmissionDate = admissionDate || admission_date;
 
-    if (!name || !email) {
-      throw new BadRequestException("Name and email are required.");
+    if (!name) {
+      throw new BadRequestException("Name are required.");
     }
 
     // const emailExists = await this.studentService.checkEmailExists(email, schoolId);

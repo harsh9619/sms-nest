@@ -289,8 +289,6 @@ export class StudentService {
           throw new BadRequestException(`Email "${cleanEmail}" is already registered.`);
         }
         studentEmail = cleanEmail;
-      } else {
-        studentEmail = `student_${Date.now()}_${Math.floor(Math.random() * 1000)}@school.com`;
       }
 
       const newUser = queryRunner.manager.create(User, {
@@ -336,7 +334,7 @@ export class StudentService {
         } else {
           const rawParentEmail = data.parentEmail || data.parent_email;
           const safePhone = parentPhone ? parentPhone.replace(/[^0-9]/g, "") : "";
-          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : (safePhone ? `parent_${safePhone}@school.com` : `parent_${savedUser.id}@school.com`));
+          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : '');
 
           const newParentUser = queryRunner.manager.create(User, {
             school_id: schoolId,
@@ -500,7 +498,7 @@ export class StudentService {
           const studentUser = await queryRunner.manager.findOne(User, { where: { id: userId } });
           const rawParentEmail = data.parentEmail || data.parent_email;
           const safePhone = currentParentPhone ? currentParentPhone.replace(/[^0-9]/g, "") : "";
-          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : (safePhone ? `parent_${safePhone}@school.com` : `parent_${userId}@school.com`));
+          const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : "");
 
           const newParentUser = queryRunner.manager.create(User, {
             school_id: studentUser?.school_id || undefined,
