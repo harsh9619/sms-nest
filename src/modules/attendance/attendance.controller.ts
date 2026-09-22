@@ -11,6 +11,7 @@ export class AttendanceController {
 
   @Get()
   async getAttendance(
+    @Req() req: any,
     @Param("schoolId") schoolIdStr: string,
     @Query("date") date?: string,
     @Query("startDate") startDate?: string,
@@ -25,6 +26,18 @@ export class AttendanceController {
     const classId = classIdStr ? toIntID(String(classIdStr)) : undefined;
     const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : undefined;
 
+    let user: any = req.user;
+    if (!user && req.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        user = verifyFn(token, jwtSecret);
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+
     return this.attendanceService.getAttendance(
       schoolId,
       academicYearHeader,
@@ -34,8 +47,91 @@ export class AttendanceController {
       classId,
       divisionId,
       status,
-      search
+      search,
+      user
     );
+  }
+
+  @Get("sample-template")
+  async getSampleTemplate() {
+    return [
+      {
+        "Registration No": "REG1001",
+        "Student Name": "Aarav Sharma",
+        "Roll No": "101",
+        "Class": "Class 1",
+        "Division": "A",
+        "Date": new Date().toISOString().split("T")[0],
+        "Status": "present",
+        "Remarks": "On time",
+      },
+      {
+        "Registration No": "REG1002",
+        "Student Name": "Ananya Patel",
+        "Roll No": "102",
+        "Class": "Class 1",
+        "Division": "A",
+        "Date": new Date().toISOString().split("T")[0],
+        "Status": "absent",
+        "Remarks": "Sick leave",
+      },
+    ];
+  }
+
+  @Get("export")
+  async exportAttendance(
+    @Req() req: any,
+    @Param("schoolId") schoolIdStr: string,
+    @Query("date") date?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("divisionId") divisionIdStr?: string,
+    @Query("status") status?: string,
+    @Query("search") search?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    const classId = classIdStr ? toIntID(String(classIdStr)) : undefined;
+    const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : undefined;
+
+    let user: any = req.user;
+    if (!user && req.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        user = verifyFn(token, jwtSecret);
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+
+    const records = await this.attendanceService.getAttendance(
+      schoolId,
+      academicYearHeader,
+      date,
+      startDate,
+      endDate,
+      classId,
+      divisionId,
+      status,
+      search,
+      user
+    );
+
+    return records.map((a: any) => ({
+      "Registration No": a.studentDetail?.registrationNo || "N/A",
+      "Student Name": a.studentName || "Student",
+      "Roll Number": a.rollNumber || "",
+      "Class": a.class || "",
+      "Division": a.section || "",
+      "Date": a.date,
+      "Status": a.status ? a.status.toUpperCase() : "",
+      "Marked By": a.markedByName || a.markedBy || "System",
+      "Time": a.markedAt || "",
+      "Remarks": a.remarks || "",
+    }));
   }
 
   @Get("student/:studentId")

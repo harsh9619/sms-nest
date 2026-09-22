@@ -22,7 +22,8 @@ export class AttendanceService {
     classId?: number,
     divisionId?: number,
     status?: string,
-    search?: string
+    search?: string,
+    currentUser?: any
   ) {
     let sayId: number | null = null;
     sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
