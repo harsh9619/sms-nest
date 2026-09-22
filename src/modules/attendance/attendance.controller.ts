@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Put, Body, Param, Query, Headers } from "@nestjs/common";
+import { Controller, Get, Post, Put, Body, Param, Query, Headers, Req } from "@nestjs/common";
 import { AttendanceService } from "./attendance.service.js";
 import { toIntID } from "../../db/index.js";
+import jwt from "jsonwebtoken";
 
 @Controller("api/:schoolId/attendance")
 export class AttendanceController {
@@ -51,11 +52,24 @@ export class AttendanceController {
 
   @Post()
   async saveAttendance(
+    @Req() req: any,
     @Param("schoolId") schoolIdStr: string,
     @Body() body: { records: Array<{ studentId: string; classId?: string; date: string; status: string; remarks?: string; markedBy?: string }> }
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : 1;
-    return this.attendanceService.saveAttendance(schoolId, body.records || []);
+    let loggedInUserId: any = req.user?.sub || req.user?.id || req.user?.userId;
+    if (!loggedInUserId && req.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        const decoded = verifyFn(token, jwtSecret);
+        loggedInUserId = decoded?.sub || decoded?.id || decoded?.userId;
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+    return this.attendanceService.saveAttendance(schoolId, body.records || [], loggedInUserId);
   }
 
   @Put(":id")
