@@ -3,11 +3,71 @@ import { AttendanceService } from "./attendance.service.js";
 import { toIntID } from "../../db/index.js";
 import jwt from "jsonwebtoken";
 
-@Controller("api/:schoolId/attendance")
+@Controller(["api/:schoolId/attendance", "api/attendance"])
 export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService) { }
 
+  @Get("attendance_student_list")
+  async getAttendanceStudentList(
+    @Req() req: any,
+    @Param("schoolId") schoolIdStr?: string,
+    @Query("date") date?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("divisionId") divisionIdStr?: string,
+    @Query("sectionId") sectionIdStr?: string,
+    @Query("search") search?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    const classId = classIdStr ? toIntID(String(classIdStr)) : undefined;
+    const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : (sectionIdStr ? toIntID(String(sectionIdStr)) : undefined);
+
+    let user: any = req.user;
+    if (!user && req.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        user = verifyFn(token, jwtSecret);
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+
+    return this.attendanceService.getAttendanceStudentList(
+      schoolId,
+      academicYearHeader,
+      classId,
+      divisionId,
+      search,
+      date,
+      user
+    );
+  }
+
+  @Get("attendance-student-list")
+  async getAttendanceStudentListAlias(
+    @Req() req: any,
+    @Param("schoolId") schoolIdStr?: string,
+    @Query("date") date?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("divisionId") divisionIdStr?: string,
+    @Query("sectionId") sectionIdStr?: string,
+    @Query("search") search?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    return this.getAttendanceStudentList(
+      req,
+      schoolIdStr,
+      date,
+      classIdStr,
+      divisionIdStr,
+      sectionIdStr,
+      search,
+      academicYearHeader
+    );
+  }
 
   @Get()
   async getAttendance(
@@ -53,29 +113,39 @@ export class AttendanceController {
   }
 
   @Get("sample-template")
-  async getSampleTemplate() {
-    return [
-      {
-        "Registration No": "REG1001",
-        "Student Name": "Aarav Sharma",
-        "Roll No": "101",
-        "Class": "Class 1",
-        "Division": "A",
-        "Date": new Date().toISOString().split("T")[0],
-        "Status": "present",
-        "Remarks": "On time",
-      },
-      {
-        "Registration No": "REG1002",
-        "Student Name": "Ananya Patel",
-        "Roll No": "102",
-        "Class": "Class 1",
-        "Division": "A",
-        "Date": new Date().toISOString().split("T")[0],
-        "Status": "absent",
-        "Remarks": "Sick leave",
-      },
-    ];
+  async getSampleTemplate(
+    @Req() req: any,
+    @Param("schoolId") schoolIdStr?: string,
+    @Query("date") date?: string,
+    @Query("classId") classIdStr?: string,
+    @Query("divisionId") divisionIdStr?: string,
+    @Query("sectionId") sectionIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    const classId = classIdStr ? toIntID(String(classIdStr)) : undefined;
+    const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : (sectionIdStr ? toIntID(String(sectionIdStr)) : undefined);
+
+    let user: any = req.user;
+    if (!user && req.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        user = verifyFn(token, jwtSecret);
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+
+    return this.attendanceService.getSampleTemplate(
+      schoolId,
+      academicYearHeader,
+      classId,
+      divisionId,
+      date,
+      user
+    );
   }
 
   @Get("export")

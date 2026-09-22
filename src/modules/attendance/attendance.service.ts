@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { Attendance } from "../../entities/attendance.entity.js";
+import { Student } from "../../entities/student.entity.js";
+import { SchoolClassTeacher } from "../../entities/class-teacher.entity.js";
+import { User } from "../../entities/user.entity.js";
 import { toIntID } from "../../db/index.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
@@ -10,6 +13,12 @@ export class AttendanceService {
   constructor(
     @InjectRepository(Attendance)
     private attendanceRepo: Repository<Attendance>,
+    @InjectRepository(Student)
+    private studentRepo: Repository<Student>,
+    @InjectRepository(SchoolClassTeacher)
+    private schoolClassTeacherRepo: Repository<SchoolClassTeacher>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
     private ayService: AcademicYearService,
   ) { }
 
@@ -286,21 +295,21 @@ export class AttendanceService {
     return fullRecords.map((att) => {
       const markerObj = att.marker
         ? {
-            id: String(att.marker.id),
-            name: att.marker.name,
-            email: att.marker.email,
-            phone: att.marker.phone,
-            role: att.marker.role,
-          }
+          id: String(att.marker.id),
+          name: att.marker.name,
+          email: att.marker.email,
+          phone: att.marker.phone,
+          role: att.marker.role,
+        }
         : null;
 
       const studentObj = att.student
         ? {
-            id: String(att.student.id),
-            userId: String(att.student.user_id),
-            name: att.student.user ? att.student.user.name : "Student",
-            rollNo: att.student.roll_no || "",
-          }
+          id: String(att.student.id),
+          userId: String(att.student.user_id),
+          name: att.student.user ? att.student.user.name : "Student",
+          rollNo: att.student.roll_no || "",
+        }
         : null;
 
       return {
@@ -352,5 +361,226 @@ export class AttendanceService {
       remarks: updated.remarks,
       schoolId: String(updated.school_id),
     };
+  }
+
+  async getAttendanceStudentList(
+    schoolId?: number,
+    academicYearHeader?: string,
+    classId?: number,
+    divisionId?: number,
+    search?: string,
+    date?: string,
+    currentUser?: any
+  ) {
+    let userId: number | null = null;
+    let userRole: string = "";
+
+    if (currentUser) {
+      const rawUserId = currentUser.sub || currentUser.id || currentUser.userId;
+      if (rawUserId) {
+        userId = toIntID(String(rawUserId));
+      }
+      if (currentUser.role) {
+        userRole = String(currentUser.role).toLowerCase();
+      }
+    }
+
+    if (userId) {
+      const dbUser = await this.userRepo.findOne({ where: { id: userId } });
+      if (dbUser) {
+        if (!userRole) {
+          userRole = String(dbUser.role || "").toLowerCase();
+        }
+        if (!schoolId && dbUser.school_id) {
+          schoolId = dbUser.school_id;
+        }
+      }
+    }
+
+    const isTeacher = userRole === "teacher";
+
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    }
+
+    const qb = this.studentRepo
+      .createQueryBuilder("st")
+      .innerJoinAndSelect("st.user", "u")
+      .leftJoinAndSelect("st.class", "c")
+      .leftJoinAndSelect("st.division_master", "dm")
+      .leftJoinAndSelect("st.caste_master", "cm")
+      .leftJoinAndSelect("st.school_academic_year", "say")
+      .leftJoinAndSelect("say.academic_year", "ay")
+      .where("u.is_active = :isActive", { isActive: true })
+      .andWhere("st.is_deleted = :isDeleted", { isDeleted: false });
+
+    if (schoolId) {
+      qb.andWhere("st.school_id = :schoolId", { schoolId });
+    }
+
+    if (sayId) {
+      qb.andWhere("st.school_academic_year_id = :sayId", { sayId });
+    }
+
+    if (isTeacher) {
+      if (!userId) {
+        return [];
+      }
+
+      const ctWhere: any = { teacher_id: userId };
+      if (schoolId) {
+        ctWhere.school_id = schoolId;
+      }
+      const classTeacherRecords = await this.schoolClassTeacherRepo.find({
+        where: ctWhere,
+      });
+
+      const teacherClassIds = Array.from(new Set(classTeacherRecords.map((ct) => ct.class_id).filter(Boolean)));
+
+      if (teacherClassIds.length === 0) {
+        return [];
+      }
+
+      if (classId) {
+        if (teacherClassIds.includes(classId)) {
+          qb.andWhere("st.class_id = :classId", { classId });
+        } else {
+          return [];
+        }
+      } else {
+        qb.andWhere("st.class_id IN (:...teacherClassIds)", { teacherClassIds });
+      }
+    } else {
+      if (classId) {
+        qb.andWhere("st.class_id = :classId", { classId });
+      }
+    }
+
+    if (divisionId) {
+      qb.andWhere("(st.division_master_id = :divisionId OR c.division_master_id = :divisionId)", { divisionId });
+    }
+
+    if (search && search.trim()) {
+      const s = `%${search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE :s OR LOWER(u.email) LIKE :s OR LOWER(st.roll_no) LIKE :s OR LOWER(st.registration_no) LIKE :s OR LOWER(st.scholar_no) LIKE :s)",
+        { s }
+      );
+    }
+
+    qb.orderBy("c.name", "ASC")
+      .addOrderBy("dm.name", "ASC")
+      .addOrderBy("st.roll_no", "ASC");
+
+    const students = await qb.getMany();
+
+    let attendanceMap: Record<number, Attendance> = {};
+    if (date && students.length > 0) {
+      const studentIds = students.map((st) => st.id);
+      const attRecords = await this.attendanceRepo
+        .createQueryBuilder("att")
+        .where("att.student_id IN (:...studentIds)", { studentIds })
+        .andWhere("att.date = :date", { date })
+        .getMany();
+
+      for (const record of attRecords) {
+        attendanceMap[record.student_id] = record;
+      }
+    }
+
+    return students.map((st) => {
+      const att = attendanceMap[st.id];
+      const studentObj = {
+        id: String(st.id),
+        schoolId: String(st.school_id),
+        schoolAcademicYearId: st.school_academic_year_id ? String(st.school_academic_year_id) : null,
+        userId: st.user_id ? String(st.user_id) : null,
+        name: st.user ? st.user.name : "",
+        email: st.user ? st.user.email : "",
+        phone: st.user?.phone || st.whatsapp_no || "",
+        avatarUrl: st.user?.avatar_url || null,
+        rollNo: st.roll_no || "",
+        registrationNo: st.registration_no || "",
+        scholarNo: st.scholar_no || "",
+        dob: st.dob || "",
+        gender: st.gender || "",
+        bloodGroup: st.blood_group || "",
+        casteCategory: st.caste_category || "",
+        fatherName: st.father_name || "",
+        motherName: st.mother_name || "",
+        guardianName: st.guardian_name || "",
+        guardianPhone: st.guardian_phone || "",
+        whatsappNo: st.whatsapp_no || "",
+        address: st.address || "",
+        admissionDate: st.admission_date || "",
+        medium: st.medium || "",
+        academicYear: st.academic_year || "",
+      };
+
+      return {
+        id: String(st.id),
+        studentId: String(st.id),
+        userId: st.user_id ? String(st.user_id) : null,
+        name: st.user ? st.user.name : "",
+        studentName: st.user ? st.user.name : "",
+        email: st.user ? st.user.email : "",
+        phone: st.user?.phone || st.whatsapp_no || "",
+        avatarUrl: st.user?.avatar_url || null,
+        rollNo: st.roll_no || "",
+        rollNumber: st.roll_no || "",
+        registrationNo: st.registration_no || "",
+        scholarNo: st.scholar_no || "",
+        classId: st.class_id ? String(st.class_id) : "",
+        className: st.class ? st.class.name : "",
+        class: st.class ? st.class.name : "",
+        divisionId: st.division_master_id ? String(st.division_master_id) : (st.class?.division_master_id ? String(st.class.division_master_id) : ""),
+        divisionName: st.division_master ? st.division_master.name : (st.class ? st.class.division || "" : ""),
+        section: st.division_master ? st.division_master.name : (st.class ? st.class.division || "" : ""),
+        gender: st.gender || "",
+        dob: st.dob || "",
+        fatherName: st.father_name || st.guardian_name || "",
+        motherName: st.mother_name || "",
+        guardianName: st.guardian_name || st.father_name || "",
+        guardianPhone: st.guardian_phone || "",
+        status: att ? att.status : null,
+        attendanceStatus: att ? att.status : null,
+        attendanceId: att ? String(att.id) : null,
+        remarks: att ? att.remarks : null,
+        studentDetail: studentObj,
+      };
+    });
+  }
+
+  async getSampleTemplate(
+    schoolId?: number,
+    academicYearHeader?: string,
+    classId?: number,
+    divisionId?: number,
+    date?: string,
+    currentUser?: any
+  ) {
+    const students = await this.getAttendanceStudentList(
+      schoolId,
+      academicYearHeader,
+      classId,
+      divisionId,
+      undefined,
+      date,
+      currentUser
+    );
+
+    const targetDate = date || new Date().toISOString().split("T")[0];
+
+    return students.map((st: any) => ({
+      "Registration No": st.registrationNo || st.registration_no || "N/A",
+      "Student Name": st.studentName || st.name || "Student",
+      "Roll No": st.rollNumber || st.rollNo || st.roll_no || "",
+      "Class": st.className || st.class || "",
+      "Division": st.divisionName || st.section || "",
+      "Date": targetDate,
+      "Status": st.attendanceStatus || st.status || "present",
+      "Remarks": st.remarks || "",
+    }));
   }
 }
