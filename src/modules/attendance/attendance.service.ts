@@ -581,6 +581,8 @@ export class AttendanceService {
       "Date": targetDate,
       "Status": st.attendanceStatus || st.status || "present",
       "Remarks": st.remarks || "",
+      "classId": st.classId || "",
+      "divisionId": st.divisionId || ""
     }));
   }
 }
