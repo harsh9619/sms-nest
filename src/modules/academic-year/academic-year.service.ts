@@ -15,7 +15,7 @@ export class AcademicYearService {
   ) {}
 
   async getSchoolAcademicYearId(
-    schoolId: number,
+    schoolId?: number | null,
     headerVal?: string | number | null
   ): Promise<number | null> {
     const parsedInt = headerVal ? parseInt(String(headerVal), 10) : null;
@@ -24,8 +24,11 @@ export class AcademicYearService {
     if (headerStr) {
       const qb = this.sayRepo
         .createQueryBuilder("say")
-        .leftJoin("say.academic_year", "ay")
-        .where("say.school_id = :schoolId", { schoolId });
+        .leftJoin("say.academic_year", "ay");
+
+      if (schoolId) {
+        qb.where("say.school_id = :schoolId", { schoolId });
+      }
 
       if (parsedInt && !isNaN(parsedInt)) {
         qb.andWhere(
@@ -42,8 +45,13 @@ export class AcademicYearService {
       }
     }
 
+    const whereClause: any = {};
+    if (schoolId) {
+      whereClause.school_id = schoolId;
+    }
+
     const fallback = await this.sayRepo.findOne({
-      where: { school_id: schoolId },
+      where: whereClause,
       order: { is_current: "DESC", id: "DESC" },
     });
 

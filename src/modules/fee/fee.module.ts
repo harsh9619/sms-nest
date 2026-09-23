@@ -6,13 +6,16 @@ import { Student } from "../../entities/student.entity.js";
 import { SchoolClass } from "../../entities/school-class.entity.js";
 import { FeeController } from "./fee.controller.js";
 import { FeeService } from "./fee.service.js";
+import { AcademicYearModule } from "../academic-year/academic-year.module.js";
+
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Fee, SchoolClassFeeStructure, Student, SchoolClass]),
+    AcademicYearModule
   ],
   controllers: [FeeController],
   providers: [FeeService],
   exports: [FeeService],
 })
-export class FeeModule {}
+export class FeeModule { }

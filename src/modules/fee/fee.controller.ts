@@ -7,22 +7,24 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   NotFoundException,
+  Inject,
 } from "@nestjs/common";
 import { FeeService } from "./fee.service.js";
 import { toIntID } from "../../db/index.js";
 
 @Controller("api/:schoolId/fees")
 export class FeeController {
-  constructor(private readonly feeService: FeeService) {}
+  constructor(@Inject(FeeService) private readonly feeService: FeeService) { }
 
   @Get()
   async getFees(
     @Param("schoolId") schoolIdStr: string,
-    @Query("academicYear") academicYear?: string
+    @Headers("academicyearid") academicYearHeader?: string,
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
-    return this.feeService.getFees(schoolId, academicYear);
+    return this.feeService.getFees(schoolId, academicYearHeader);
   }
 
   @Post()

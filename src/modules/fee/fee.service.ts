@@ -1,10 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Fee } from "../../entities/fee.entity.js";
 import { SchoolClassFeeStructure } from "../../entities/class-fee-structure.entity.js";
 import { Student } from "../../entities/student.entity.js";
 import { SchoolClass } from "../../entities/school-class.entity.js";
+import { AcademicYearService } from "../academic-year/academic-year.service.js";
+
 
 @Injectable()
 export class FeeService {
@@ -16,10 +18,14 @@ export class FeeService {
     @InjectRepository(Student)
     private studentRepo: Repository<Student>,
     @InjectRepository(SchoolClass)
-    private schoolClassRepo: Repository<SchoolClass>
-  ) {}
+    private schoolClassRepo: Repository<SchoolClass>,
+    @Inject(AcademicYearService)
+    private ayService: AcademicYearService,
+  ) { }
 
-  async getFees(schoolId?: number, academicYear?: string) {
+  async getFees(schoolId?: number, academicYearHeader?: string) {
+    let sayId: number | null = null;
+    sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
     const qb = this.feeRepo
       .createQueryBuilder("f")
       .innerJoinAndSelect("f.student", "st")
@@ -31,10 +37,9 @@ export class FeeService {
     if (schoolId) {
       qb.andWhere("f.school_id = :schoolId", { schoolId });
     }
-    if (academicYear) {
-      qb.andWhere("ay.label = :academicYear", { academicYear });
+    if (sayId) {
+      qb.andWhere("say.id = :sayId", { sayId });
     }
-
     qb.orderBy("f.created_at", "DESC");
 
     const fees = await qb.getMany();
@@ -60,8 +65,27 @@ export class FeeService {
   }
 
   async getFullFeeRecord(feeId: number) {
-    const fees = await this.getFees(undefined, undefined);
-    return fees.find((f) => Number(f.id) === feeId) || null;
+    const feeObj = await this.feeRepo.findOne({
+      where: { id: feeId },
+      relations: { student: { user: true, class: true } },
+    });
+    if (!feeObj) return null;
+
+    return {
+      id: String(feeObj.id),
+      studentId: String(feeObj.student_id),
+      studentName: feeObj.student?.user ? feeObj.student.user.name : "",
+      rollNumber: feeObj.student ? feeObj.student.roll_no : "",
+      class: feeObj.student?.class ? `${feeObj.student.class.name}-${feeObj.student.class.division || ""}` : "",
+      amount: Number(feeObj.amount),
+      type: feeObj.fee_type,
+      feeType: feeObj.fee_type,
+      dueDate: feeObj.due_date,
+      paidDate: feeObj.paid_at ? new Date(feeObj.paid_at).toISOString() : null,
+      status: feeObj.status,
+      remarks: feeObj.description,
+      schoolId: String(feeObj.school_id),
+    };
   }
 
   async createFee(schoolId: number, data: any) {
@@ -71,8 +95,14 @@ export class FeeService {
     const dbFeeType = validFeeTypes.includes(feeType) ? feeType : "other";
     const description = remarks || (feeType !== dbFeeType ? feeType : null);
 
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId);
+    }
+
     const newFee = this.feeRepo.create({
       school_id: schoolId,
+      school_academic_year_id: sayId || undefined,
       student_id: studentId,
       amount,
       fee_type: dbFeeType,
