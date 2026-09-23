@@ -134,7 +134,8 @@ INSERT INTO role_masters (id, name, label, description) VALUES
   (2, 'school_admin', 'School Admin', 'School Administrator'),
   (3, 'teacher',      'Teacher',      'Teaching Staff'),
   (4, 'student',      'Student',      'Enrolled Student'),
-  (5, 'parent',       'Parent',       'Student Guardian / Parent')
+  (5, 'parent',       'Parent',       'Student Guardian / Parent'),
+  (6, 'principal',    'Principal',    'School Principal')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, label = EXCLUDED.label, description = EXCLUDED.description;
 
 -- =======================

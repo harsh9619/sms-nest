@@ -409,26 +409,36 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO school_class_fee_structures (id, school_id, school_academic_year_id, class_master_id, fee_type, fee_name, amount, frequency, due_day, is_mandatory, description)
 OVERRIDING SYSTEM VALUE VALUES
-  -- Greenwood Class 5 (class_master_id = 7)
-  (1, 1, 1, 7,  'tuition',   'Monthly Tuition Fee', 3500.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
-  (2, 1, 1, 7,  'transport', 'Bus Transport Fee',   800.00,  'monthly',  10, FALSE, 'Optional school bus transport'),
-  (3, 1, 1, 7,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Mid-term examination fee'),
+  -- Greenwood Public School (school_id = 1)
+  (1,  1, 1, 1,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, TRUE,  'LKG Monthly Tuition'),
+  (2,  1, 1, 2,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, TRUE,  'UKG Monthly Tuition'),
+  (3,  1, 1, 3,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Class 1 Monthly Tuition'),
+  (4,  1, 1, 3,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 1 Mid-term Exam Fee'),
+  (5,  1, 1, 4,  'tuition',   'Monthly Tuition Fee', 3200.00, 'monthly',  10, TRUE,  'Class 2 Monthly Tuition'),
+  (6,  1, 1, 4,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 2 Mid-term Exam Fee'),
+  (7,  1, 1, 5,  'tuition',   'Monthly Tuition Fee', 3400.00, 'monthly',  10, TRUE,  'Class 3 Monthly Tuition'),
+  (8,  1, 1, 5,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 3 Mid-term Exam Fee'),
+  (9,  1, 1, 6,  'tuition',   'Monthly Tuition Fee', 3600.00, 'monthly',  10, TRUE,  'Class 4 Monthly Tuition'),
+  (10, 1, 1, 6,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, TRUE,  'Class 4 Mid-term Exam Fee'),
+  (11, 1, 1, 7,  'tuition',   'Monthly Tuition Fee', 3800.00, 'monthly',  10, TRUE,  'Class 5 Monthly Tuition'),
+  (12, 1, 1, 7,  'transport', 'Bus Transport Fee',   800.00,  'monthly',  10, FALSE, 'Optional school bus transport'),
+  (13, 1, 1, 7,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, TRUE,  'Class 5 Mid-term Exam Fee'),
+  (14, 1, 1, 8,  'tuition',   'Monthly Tuition Fee', 4200.00, 'monthly',  10, TRUE,  'Class 6 Monthly Tuition'),
+  (15, 1, 1, 8,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, TRUE,  'Class 6 Mid-term Exam Fee'),
+  (16, 1, 1, 9,  'tuition',   'Monthly Tuition Fee', 4500.00, 'monthly',  10, TRUE,  'Class 7 Monthly Tuition'),
+  (17, 1, 1, 9,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, TRUE,  'Class 7 Mid-term Exam Fee'),
+  (18, 1, 1, 10, 'tuition',   'Monthly Tuition Fee', 4800.00, 'monthly',  10, TRUE,  'Class 8 Monthly Tuition'),
+  (19, 1, 1, 10, 'other',     'Annual Science Lab',  1000.00, 'annually', 15, TRUE,  'Annual lab equipment charge'),
+  (20, 1, 1, 10, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Class 8 Mid-term Exam Fee'),
+  (21, 1, 1, 11, 'tuition',   'Monthly Tuition Fee', 5200.00, 'monthly',  10, TRUE,  'Class 9 Monthly Tuition'),
+  (22, 1, 1, 11, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Class 9 Mid-term Exam Fee'),
+  (23, 1, 1, 12, 'tuition',   'Monthly Tuition Fee', 5500.00, 'monthly',  10, TRUE,  'Class 10 Monthly Tuition'),
+  (24, 1, 1, 12, 'other',     'Computer Lab Fee',    1200.00, 'annually', 15, TRUE,  'Annual CS lab access'),
+  (25, 1, 1, 12, 'exam',      'Board Exam Fee',      1500.00, 'one_time', 20, TRUE,  'Board registration & exam fee'),
 
-  -- Greenwood Class 8 (class_master_id = 10)
-  (4, 1, 1, 10, 'tuition',   'Monthly Tuition Fee', 4500.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
-  (5, 1, 1, 10, 'other',     'Annual Science Lab',  1000.00, 'annually', 15, TRUE,  'Annual lab equipment charge'),
-  (6, 1, 1, 10, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Mid-term examination fee'),
-
-  -- Greenwood Class 10 (class_master_id = 12)
-  (7, 1, 1, 12, 'tuition',   'Monthly Tuition Fee', 5000.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
-  (8, 1, 1, 12, 'other',     'Computer Lab Fee',    1200.00, 'annually', 15, TRUE,  'Annual CS lab access'),
-  (9, 1, 1, 12, 'exam',      'Board Exam Fee',      1500.00, 'one_time', 20, TRUE,  'Board registration & exam fee'),
-
-  -- Sunrise Class 6 (class_master_id = 8)
-  (10, 2, 3, 8, 'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Monthly tuition fee'),
-
-  -- Sunrise Class 9 (class_master_id = 11)
-  (11, 2, 3, 11, 'tuition',  'Monthly Tuition Fee', 4000.00, 'monthly',  10, TRUE,  'Monthly tuition fee')
+  -- Sunrise Academy (school_id = 2)
+  (26, 2, 3, 8,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Monthly tuition fee'),
+  (27, 2, 3, 11, 'tuition',   'Monthly Tuition Fee', 4000.00, 'monthly',  10, TRUE,  'Monthly tuition fee')
 ON CONFLICT (id) DO NOTHING;
 
 -- =======================

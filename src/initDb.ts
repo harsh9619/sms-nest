@@ -13,6 +13,7 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const dbName = process.env.DB_NAME || "school_management";
 const SCHEMA_PATH = path.join(__dirname, "..", "sql", "database.sql");
+const SEED_PATH = path.join(__dirname, "..", "sql", "seed.sql");
 const DATA_PATH = path.join(__dirname, "..", "data.json");
 
 function toUUID(str: any): number {
@@ -100,6 +101,7 @@ const ROLE_MAP: Record<string, number> = {
   teacher: 3,
   student: 4,
   parent: 5,
+  principal: 6
 };
 
 async function ensureStudentExists(appQuery: any, studentId: string, name: string, rollNumber: string, className: string, sectionName: string, schoolId: string) {
@@ -274,7 +276,17 @@ async function initializeDatabase() {
     `);
     console.log("✅ school_academic_years (per-school link) table ready.");
 
-    // 5. Seed database from data.json if table is empty
+    // 5. Seed database from seed.sql if present, otherwise data.json
+    if (fs.existsSync(SEED_PATH)) {
+      console.log("⏳ Applying seed.sql DML...");
+      const seedSql = fs.readFileSync(SEED_PATH, "utf-8");
+      await appQuery(seedSql);
+      console.log("✅ seed.sql applied successfully.");
+      console.log("🎉 Database initialization and seeding completed successfully!");
+      await appPool.end();
+      return;
+    }
+
     if (!fs.existsSync(DATA_PATH)) {
       console.log("ℹ️ No data.json found. Skipping data seeding.");
       await appPool.end();
@@ -452,17 +464,17 @@ async function initializeDatabase() {
     if (await isTableEmpty("class_masters")) {
       console.log("⏳ Seeding class_masters...");
       const classMasters = [
-        { id: 1,  name: "LKG",     grade_level: -2 },
-        { id: 2,  name: "UKG",     grade_level: -1 },
-        { id: 3,  name: "Class 1",  grade_level: 1  },
-        { id: 4,  name: "Class 2",  grade_level: 2  },
-        { id: 5,  name: "Class 3",  grade_level: 3  },
-        { id: 6,  name: "Class 4",  grade_level: 4  },
-        { id: 7,  name: "Class 5",  grade_level: 5  },
-        { id: 8,  name: "Class 6",  grade_level: 6  },
-        { id: 9,  name: "Class 7",  grade_level: 7  },
-        { id: 10, name: "Class 8",  grade_level: 8  },
-        { id: 11, name: "Class 9",  grade_level: 9  },
+        { id: 1, name: "LKG", grade_level: -2 },
+        { id: 2, name: "UKG", grade_level: -1 },
+        { id: 3, name: "Class 1", grade_level: 1 },
+        { id: 4, name: "Class 2", grade_level: 2 },
+        { id: 5, name: "Class 3", grade_level: 3 },
+        { id: 6, name: "Class 4", grade_level: 4 },
+        { id: 7, name: "Class 5", grade_level: 5 },
+        { id: 8, name: "Class 6", grade_level: 6 },
+        { id: 9, name: "Class 7", grade_level: 7 },
+        { id: 10, name: "Class 8", grade_level: 8 },
+        { id: 11, name: "Class 9", grade_level: 9 },
         { id: 12, name: "Class 10", grade_level: 10 },
         { id: 13, name: "Class 11", grade_level: 11 },
         { id: 14, name: "Class 12", grade_level: 12 },
@@ -481,27 +493,27 @@ async function initializeDatabase() {
     if (await isTableEmpty("subject_masters")) {
       console.log("⏳ Seeding subject_masters...");
       const subjectMasters = [
-        { id: 1,  name: "English",              code: "ENG",    category: "language"   },
-        { id: 2,  name: "Hindi",                code: "HIN",    category: "language"   },
-        { id: 3,  name: "Sanskrit",             code: "SAN",    category: "language"   },
-        { id: 4,  name: "Mathematics",          code: "MATH",   category: "science"    },
-        { id: 5,  name: "Science",              code: "SCI",    category: "science"    },
-        { id: 6,  name: "Physics",              code: "PHY",    category: "science"    },
-        { id: 7,  name: "Chemistry",            code: "CHEM",   category: "science"    },
-        { id: 8,  name: "Biology",              code: "BIO",    category: "science"    },
-        { id: 9,  name: "Social Studies",       code: "SST",    category: "arts"       },
-        { id: 10, name: "History",              code: "HIST",   category: "arts"       },
-        { id: 11, name: "Geography",            code: "GEO",    category: "arts"       },
-        { id: 12, name: "Civics",               code: "CIV",    category: "arts"       },
-        { id: 13, name: "Economics",            code: "ECO",    category: "commerce"   },
-        { id: 14, name: "Business Studies",     code: "BST",    category: "commerce"   },
-        { id: 15, name: "Accountancy",          code: "ACC",    category: "commerce"   },
-        { id: 16, name: "Computer Science",     code: "CS",     category: "science"    },
-        { id: 17, name: "Information Technology",code: "IT",    category: "science"    },
-        { id: 18, name: "Physical Education",   code: "PE",     category: "vocational" },
-        { id: 19, name: "Art & Craft",          code: "ART",    category: "vocational" },
-        { id: 20, name: "Music",                code: "MUS",    category: "vocational" },
-        { id: 21, name: "English Literature",   code: "ENGLIT", category: "language"   },
+        { id: 1, name: "English", code: "ENG", category: "language" },
+        { id: 2, name: "Hindi", code: "HIN", category: "language" },
+        { id: 3, name: "Sanskrit", code: "SAN", category: "language" },
+        { id: 4, name: "Mathematics", code: "MATH", category: "science" },
+        { id: 5, name: "Science", code: "SCI", category: "science" },
+        { id: 6, name: "Physics", code: "PHY", category: "science" },
+        { id: 7, name: "Chemistry", code: "CHEM", category: "science" },
+        { id: 8, name: "Biology", code: "BIO", category: "science" },
+        { id: 9, name: "Social Studies", code: "SST", category: "arts" },
+        { id: 10, name: "History", code: "HIST", category: "arts" },
+        { id: 11, name: "Geography", code: "GEO", category: "arts" },
+        { id: 12, name: "Civics", code: "CIV", category: "arts" },
+        { id: 13, name: "Economics", code: "ECO", category: "commerce" },
+        { id: 14, name: "Business Studies", code: "BST", category: "commerce" },
+        { id: 15, name: "Accountancy", code: "ACC", category: "commerce" },
+        { id: 16, name: "Computer Science", code: "CS", category: "science" },
+        { id: 17, name: "Information Technology", code: "IT", category: "science" },
+        { id: 18, name: "Physical Education", code: "PE", category: "vocational" },
+        { id: 19, name: "Art & Craft", code: "ART", category: "vocational" },
+        { id: 20, name: "Music", code: "MUS", category: "vocational" },
+        { id: 21, name: "English Literature", code: "ENGLIT", category: "language" },
       ];
       for (const sm of subjectMasters) {
         await appQuery(
@@ -540,12 +552,12 @@ async function initializeDatabase() {
     if (await isTableEmpty("caste_masters")) {
       console.log("⏳ Seeding caste_masters...");
       const casteMasters = [
-        { id: 1, name: "General",  code: "GEN",   description: "General Category" },
-        { id: 2, name: "O.B.C.",   code: "OBC",   description: "Other Backward Class" },
-        { id: 3, name: "S.C.",     code: "SC",    description: "Scheduled Caste" },
-        { id: 4, name: "S.T.",     code: "ST",    description: "Scheduled Tribe" },
-        { id: 5, name: "Minority", code: "MIN",   description: "Minority Community" },
-        { id: 6, name: "B.C.",     code: "BC",    description: "Backward Class" },
+        { id: 1, name: "General", code: "GEN", description: "General Category" },
+        { id: 2, name: "O.B.C.", code: "OBC", description: "Other Backward Class" },
+        { id: 3, name: "S.C.", code: "SC", description: "Scheduled Caste" },
+        { id: 4, name: "S.T.", code: "ST", description: "Scheduled Tribe" },
+        { id: 5, name: "Minority", code: "MIN", description: "Minority Community" },
+        { id: 6, name: "B.C.", code: "BC", description: "Backward Class" },
       ];
       for (const cm of casteMasters) {
         await appQuery(

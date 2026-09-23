@@ -134,6 +134,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             DivisionMaster,
             RoleMaster,
             CasteMaster,
+            SchoolClassFeeStructure,
           ],
           synchronize: false,
           extra: {
