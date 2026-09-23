@@ -34,7 +34,7 @@ export class SalaryController {
     const { teacherId, baseSalary, allowances, deductions, month, year, status, paidDate } = body;
     const dbTeacherId = toIntID(String(teacherId));
 
-    const newSalaryId = await this.salaryService.createSalary(schoolId, {
+    const newRecordId = await this.salaryService.createSalary(schoolId, {
       teacherId: dbTeacherId,
       baseSalary,
       allowances,
@@ -45,7 +45,7 @@ export class SalaryController {
       paidDate,
     });
 
-    return this.salaryService.getFullSalaryRecord(newSalaryId);
+    return this.salaryService.getFullSalaryRecord(newRecordId);
   }
 
   @Put(":id")
@@ -59,13 +59,7 @@ export class SalaryController {
       throw new NotFoundException("Salary record not found");
     }
 
-    const baseSalary = body.baseSalary !== undefined ? body.baseSalary : Number(existing.basic_salary);
-    const allowances = body.allowances !== undefined ? body.allowances : Number(existing.other_allowances);
-    const deductions = body.deductions !== undefined ? body.deductions : Number(existing.other_deductions);
-    const month = body.month !== undefined ? body.month : existing.month;
-    const year = body.year !== undefined ? body.year : existing.year;
-    const status = body.status !== undefined ? body.status : existing.status;
-    const paidDate = body.paidDate !== undefined ? body.paidDate : existing.paid_at;
+    const { baseSalary, allowances, deductions, month, year, status, paidDate } = body;
 
     await this.salaryService.updateSalary(recordId, {
       baseSalary,
@@ -90,5 +84,43 @@ export class SalaryController {
 
     await this.salaryService.deleteSalary(recordId);
     return existing;
+  }
+
+  // --- Salary Structures Endpoints ---
+
+  @Get("structures/all")
+  async getSalaryStructures(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("teacherId") teacherIdStr?: string
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const teacherId = teacherIdStr ? toIntID(teacherIdStr) : undefined;
+    return this.salaryService.getSalaryStructures(schoolId, teacherId);
+  }
+
+  @Post("structures")
+  async createOrUpdateSalaryStructure(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: any
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const structId = await this.salaryService.createOrUpdateSalaryStructure(schoolId, body);
+    return { success: true, id: structId };
+  }
+
+  @Delete("structures/:id")
+  async deleteSalaryStructure(@Param("id") idStr: string) {
+    const id = toIntID(idStr);
+    await this.salaryService.deleteSalaryStructure(id);
+    return { success: true, message: "Salary structure deleted" };
+  }
+
+  @Post("generate-payroll")
+  async generatePayroll(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: { month: number; year: number }
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    return this.salaryService.generateMonthlyPayroll(schoolId, Number(body.month), Number(body.year));
   }
 }

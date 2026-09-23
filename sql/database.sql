@@ -502,9 +502,31 @@ CREATE TABLE IF NOT EXISTS fees (
   updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_fees_school_id  ON fees(school_id);
-CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees(student_id);
-CREATE INDEX IF NOT EXISTS idx_fees_status     ON fees(status);
+-- =======================
+-- TABLE: school_class_fee_structures
+-- Master Class Fee Component Settings (Class-wise fee structure)
+-- =======================
+
+CREATE TABLE IF NOT EXISTS school_class_fee_structures (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+  school_academic_year_id INT           REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  class_master_id         INT           NOT NULL REFERENCES class_masters(id)        ON DELETE CASCADE,
+  fee_type                fee_type      NOT NULL DEFAULT 'tuition',
+  fee_name                VARCHAR(100)  NOT NULL,
+  amount                  NUMERIC(10,2) NOT NULL DEFAULT 0,
+  frequency               VARCHAR(20)   NOT NULL DEFAULT 'monthly',
+  due_day                 INT           NOT NULL DEFAULT 10,
+  is_mandatory            BOOLEAN       NOT NULL DEFAULT TRUE,
+  description             TEXT,
+  created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  UNIQUE (school_id, class_master_id, fee_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_class_fee_struct_school_id ON school_class_fee_structures(school_id);
+CREATE INDEX IF NOT EXISTS idx_class_fee_struct_class_id  ON school_class_fee_structures(class_master_id);
+
 
 -- =======================
 -- TABLE: salary_structures
@@ -598,7 +620,7 @@ BEGIN
     'schools', 'users', 'academic_years', 'school_academic_years',
     'class_masters', 'subject_masters', 'division_masters', 'caste_masters',
     'school_classes', 'school_class_subjects', 'school_class_teachers', 'school_subject_teachers',
-    'students', 'timetables', 'homework', 'fees',
+    'students', 'timetables', 'homework', 'fees', 'school_class_fee_structures',
     'salary_structures', 'salary_records', 'notices'
   ]
   LOOP

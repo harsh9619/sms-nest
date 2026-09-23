@@ -83,4 +83,43 @@ export class FeeController {
     await this.feeService.deleteFee(feeId);
     return existing;
   }
+
+  // --- Class Fee Structures Endpoints ---
+
+  @Get("structures/all")
+  async getClassFeeStructures(
+    @Param("schoolId") schoolIdStr: string,
+    @Query("classMasterId") classMasterIdStr?: string
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const classMasterId = classMasterIdStr ? toIntID(classMasterIdStr) : undefined;
+    return this.feeService.getClassFeeStructures(schoolId, classMasterId);
+  }
+
+  @Post("structures")
+  async createOrUpdateClassFeeStructure(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: any
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const structId = await this.feeService.createOrUpdateClassFeeStructure(schoolId, body);
+    return { success: true, id: structId };
+  }
+
+  @Delete("structures/:id")
+  async deleteClassFeeStructure(@Param("id") idStr: string) {
+    const id = toIntID(idStr);
+    await this.feeService.deleteClassFeeStructure(id);
+    return { success: true, message: "Class fee structure component deleted" };
+  }
+
+  @Post("generate-invoices")
+  async generateInvoices(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: { classMasterId: string | number; dueDate?: string }
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const classMasterId = toIntID(String(body.classMasterId));
+    return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate);
+  }
 }

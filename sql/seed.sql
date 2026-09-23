@@ -404,6 +404,34 @@ INSERT INTO fees (school_id, student_id, amount, fee_type, description, due_date
 ON CONFLICT DO NOTHING;
 
 -- =======================
+-- SCHOOL CLASS FEE STRUCTURES
+-- =======================
+
+INSERT INTO school_class_fee_structures (id, school_id, school_academic_year_id, class_master_id, fee_type, fee_name, amount, frequency, due_day, is_mandatory, description)
+OVERRIDING SYSTEM VALUE VALUES
+  -- Greenwood Class 5 (class_master_id = 7)
+  (1, 1, 1, 7,  'tuition',   'Monthly Tuition Fee', 3500.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
+  (2, 1, 1, 7,  'transport', 'Bus Transport Fee',   800.00,  'monthly',  10, FALSE, 'Optional school bus transport'),
+  (3, 1, 1, 7,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Mid-term examination fee'),
+
+  -- Greenwood Class 8 (class_master_id = 10)
+  (4, 1, 1, 10, 'tuition',   'Monthly Tuition Fee', 4500.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
+  (5, 1, 1, 10, 'other',     'Annual Science Lab',  1000.00, 'annually', 15, TRUE,  'Annual lab equipment charge'),
+  (6, 1, 1, 10, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Mid-term examination fee'),
+
+  -- Greenwood Class 10 (class_master_id = 12)
+  (7, 1, 1, 12, 'tuition',   'Monthly Tuition Fee', 5000.00, 'monthly',  10, TRUE,  'Regular monthly tuition fee'),
+  (8, 1, 1, 12, 'other',     'Computer Lab Fee',    1200.00, 'annually', 15, TRUE,  'Annual CS lab access'),
+  (9, 1, 1, 12, 'exam',      'Board Exam Fee',      1500.00, 'one_time', 20, TRUE,  'Board registration & exam fee'),
+
+  -- Sunrise Class 6 (class_master_id = 8)
+  (10, 2, 3, 8, 'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Monthly tuition fee'),
+
+  -- Sunrise Class 9 (class_master_id = 11)
+  (11, 2, 3, 11, 'tuition',  'Monthly Tuition Fee', 4000.00, 'monthly',  10, TRUE,  'Monthly tuition fee')
+ON CONFLICT (id) DO NOTHING;
+
+-- =======================
 -- MARKS (Final exam scores)
 -- =======================
 
@@ -533,9 +561,11 @@ SELECT setval(pg_get_serial_sequence('public.marks',                 'id'), COAL
 SELECT setval(pg_get_serial_sequence('public.timetables',            'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.timetables;
 SELECT setval(pg_get_serial_sequence('public.homework',              'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.homework;
 SELECT setval(pg_get_serial_sequence('public.notices',               'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.notices;
-SELECT setval(pg_get_serial_sequence('public.salary_records',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.salary_records;
-SELECT setval(pg_get_serial_sequence('public.academic_years',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.academic_years;
-SELECT setval(pg_get_serial_sequence('public.school_class_subjects', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_subjects;
-SELECT setval(pg_get_serial_sequence('public.school_classes',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_classes;
-SELECT setval(pg_get_serial_sequence('public.school_class_teachers', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_teachers;
-SELECT setval(pg_get_serial_sequence('public.school_subject_teachers','id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_subject_teachers;
+SELECT setval(pg_get_serial_sequence('public.salary_structures',        'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.salary_structures;
+SELECT setval(pg_get_serial_sequence('public.salary_records',           'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.salary_records;
+SELECT setval(pg_get_serial_sequence('public.school_class_fee_structures', 'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_fee_structures;
+SELECT setval(pg_get_serial_sequence('public.academic_years',           'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.academic_years;
+SELECT setval(pg_get_serial_sequence('public.school_class_subjects',    'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_subjects;
+SELECT setval(pg_get_serial_sequence('public.school_classes',           'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_classes;
+SELECT setval(pg_get_serial_sequence('public.school_class_teachers',    'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_class_teachers;
+SELECT setval(pg_get_serial_sequence('public.school_subject_teachers',   'id'), COALESCE(MAX(id), 1), MAX(id) IS NOT NULL) FROM public.school_subject_teachers;

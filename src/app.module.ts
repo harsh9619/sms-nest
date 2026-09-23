@@ -28,6 +28,7 @@ import { SubjectTeacher } from "./entities/subject-teacher.entity.js";
 import { DivisionMaster } from "./entities/division-master.entity.js";
 import { RoleMaster } from "./entities/role-master.entity.js";
 import { CasteMaster } from "./entities/caste-master.entity.js";
+import { SchoolClassFeeStructure } from "./entities/class-fee-structure.entity.js";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { SchoolModule } from "./modules/school/school.module.js";
@@ -89,6 +90,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               DivisionMaster,
               RoleMaster,
               CasteMaster,
+              SchoolClassFeeStructure,
             ],
             synchronize: false,
             extra: {
