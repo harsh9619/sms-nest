@@ -1,9 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { SalaryRecord } from "../../entities/salary-record.entity.js";
 import { SalaryStructure } from "../../entities/salary-structure.entity.js";
 import { User } from "../../entities/user.entity.js";
+import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 @Injectable()
 export class SalaryService {
@@ -11,27 +12,13 @@ export class SalaryService {
     @InjectRepository(SalaryRecord)
     private salaryRepo: Repository<SalaryRecord>,
     @InjectRepository(SalaryStructure)
-    private salaryStructRepo: Repository<SalaryStructure>
+    private salaryStructRepo: Repository<SalaryStructure>,
+    @Inject(AcademicYearService)
+    private ayService: AcademicYearService,
   ) {}
 
-  async getSalaries(schoolId?: number, academicYear?: string) {
-    const qb = this.salaryRepo
-      .createQueryBuilder("sr")
-      .innerJoinAndSelect("sr.teacher", "u")
-      .leftJoinAndSelect("sr.school_academic_year", "say")
-      .leftJoinAndSelect("say.academic_year", "ay");
-
-    if (schoolId) {
-      qb.andWhere("sr.school_id = :schoolId", { schoolId });
-    }
-    if (academicYear) {
-      qb.andWhere("ay.label = :academicYear", { academicYear });
-    }
-
-    qb.orderBy("sr.created_at", "DESC");
-
-    const records = await qb.getMany();
-    return records.map((sr) => ({
+  private mapSalaryRecord(sr: SalaryRecord) {
+    return {
       id: String(sr.id),
       teacherId: String(sr.teacher_id),
       teacherName: sr.teacher ? sr.teacher.name : "",
@@ -45,7 +32,80 @@ export class SalaryService {
       status: sr.status,
       paidDate: sr.paid_at ? new Date(sr.paid_at).toISOString() : null,
       schoolId: String(sr.school_id),
-    }));
+      schoolAcademicYearId: sr.school_academic_year_id ? String(sr.school_academic_year_id) : null,
+    };
+  }
+
+  async getSalaries(params?: {
+    schoolId?: number;
+    academicYearHeader?: string;
+    academicYear?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    teacherId?: number;
+  }) {
+    const { schoolId, academicYearHeader, academicYear, page, limit, search, status, teacherId } = params || {};
+
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    }
+
+    const qb = this.salaryRepo
+      .createQueryBuilder("sr")
+      .innerJoinAndSelect("sr.teacher", "u")
+      .leftJoinAndSelect("sr.school_academic_year", "say")
+      .leftJoinAndSelect("say.academic_year", "ay");
+
+    if (schoolId) {
+      qb.andWhere("sr.school_id = :schoolId", { schoolId });
+    }
+    if (sayId) {
+      qb.andWhere("say.id = :sayId", { sayId });
+    }
+    if (academicYear) {
+      qb.andWhere("ay.label = :academicYear", { academicYear });
+    }
+    if (teacherId) {
+      qb.andWhere("sr.teacher_id = :teacherId", { teacherId });
+    }
+    if (status && status !== "all") {
+      qb.andWhere("sr.status = :status", { status });
+    }
+    if (search && search.trim()) {
+      const q = `%${search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE :q OR LOWER(sr.status) LIKE :q OR LOWER(sr.remarks) LIKE :q)",
+        { q }
+      );
+    }
+
+    qb.orderBy("sr.created_at", "DESC");
+
+    if (page || limit) {
+      const pageNum = Math.max(1, page || 1);
+      const limitNum = Math.max(1, limit || 10);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum);
+      const [records, total] = await qb.getManyAndCount();
+      const data = records.map((sr) => this.mapSalaryRecord(sr));
+
+      return {
+        data,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      };
+    }
+
+    const records = await qb.getMany();
+    return records.map((sr) => this.mapSalaryRecord(sr));
   }
 
   async getSalaryById(recordId: number) {
@@ -53,8 +113,12 @@ export class SalaryService {
   }
 
   async getFullSalaryRecord(recordId: number) {
-    const list = await this.getSalaries(undefined, undefined);
-    return list.find((s) => Number(s.id) === recordId) || null;
+    const sr = await this.salaryRepo.findOne({
+      where: { id: recordId },
+      relations: { teacher: true, school_academic_year: true },
+    });
+    if (!sr) return null;
+    return this.mapSalaryRecord(sr);
   }
 
   async createSalary(schoolId: number, data: any) {
@@ -69,8 +133,14 @@ export class SalaryService {
     const validStatuses = ["pending", "approved", "paid", "on_hold"];
     const dbStatus = validStatuses.includes(status) ? status : "pending";
 
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId);
+    }
+
     const newRecord = this.salaryRepo.create({
       school_id: schoolId,
+      school_academic_year_id: sayId || undefined,
       teacher_id: teacherId,
       month: Number(month || new Date().getMonth() + 1),
       year: Number(year || new Date().getFullYear()),
@@ -221,6 +291,11 @@ export class SalaryService {
       return { count: 0, message: "No active staff salary structures configured." };
     }
 
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId);
+    }
+
     let createdCount = 0;
 
     for (const struct of structures) {
@@ -243,6 +318,7 @@ export class SalaryService {
       if (!existing) {
         const newRecord = this.salaryRepo.create({
           school_id: schoolId,
+          school_academic_year_id: sayId || undefined,
           teacher_id: struct.teacher_id,
           salary_structure_id: struct.id,
           month,

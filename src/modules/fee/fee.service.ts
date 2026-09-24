@@ -23,9 +23,40 @@ export class FeeService {
     private ayService: AcademicYearService,
   ) { }
 
-  async getFees(schoolId?: number, academicYearHeader?: string) {
+  private mapFeeEntity(f: Fee) {
+    return {
+      id: String(f.id),
+      studentId: String(f.student_id),
+      studentName: f.student?.user ? f.student.user.name : "",
+      rollNumber: f.student ? f.student.roll_no : "",
+      class: f.student?.class ? `${f.student.class.name}-${f.student.class.division || ""}` : "",
+      amount: Number(f.amount),
+      type: f.fee_type,
+      feeType: f.fee_type,
+      dueDate: f.due_date,
+      paidDate: f.paid_at ? new Date(f.paid_at).toISOString() : null,
+      status: f.status,
+      remarks: f.description,
+      schoolId: String(f.school_id),
+    };
+  }
+
+  async getFees(params: {
+    schoolId?: number;
+    academicYearHeader?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    feeType?: string;
+    studentId?: number;
+  }) {
+    const { schoolId, academicYearHeader, page, limit, search, status, feeType, studentId } = params;
+
     let sayId: number | null = null;
-    sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    }
     const qb = this.feeRepo
       .createQueryBuilder("f")
       .innerJoinAndSelect("f.student", "st")
@@ -40,24 +71,47 @@ export class FeeService {
     if (sayId) {
       qb.andWhere("say.id = :sayId", { sayId });
     }
+    if (studentId) {
+      qb.andWhere("f.student_id = :studentId", { studentId });
+    }
+    if (status && status !== "all") {
+      qb.andWhere("f.status = :status", { status });
+    }
+    if (feeType && feeType !== "all") {
+      qb.andWhere("f.fee_type = :feeType", { feeType });
+    }
+    if (search && search.trim()) {
+      const q = `%${search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE :q OR LOWER(st.roll_no) LIKE :q OR LOWER(c.name) LIKE :q OR LOWER(f.fee_type) LIKE :q OR LOWER(f.description) LIKE :q)",
+        { q }
+      );
+    }
+
     qb.orderBy("f.created_at", "DESC");
 
+    if (page || limit) {
+      const pageNum = Math.max(1, page || 1);
+      const limitNum = Math.max(1, limit || 10);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum);
+      const [fees, total] = await qb.getManyAndCount();
+      const data = fees.map((f) => this.mapFeeEntity(f));
+
+      return {
+        data,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      };
+    }
+
     const fees = await qb.getMany();
-    return fees.map((f) => ({
-      id: String(f.id),
-      studentId: String(f.student_id),
-      studentName: f.student?.user ? f.student.user.name : "",
-      rollNumber: f.student ? f.student.roll_no : "",
-      class: f.student?.class ? `${f.student.class.name}-${f.student.class.division || ""}` : "",
-      amount: Number(f.amount),
-      type: f.fee_type,
-      feeType: f.fee_type,
-      dueDate: f.due_date,
-      paidDate: f.paid_at ? new Date(f.paid_at).toISOString() : null,
-      status: f.status,
-      remarks: f.description,
-      schoolId: String(f.school_id),
-    }));
+    return fees.map((f) => this.mapFeeEntity(f));
   }
 
   async getFeeById(feeId: number) {

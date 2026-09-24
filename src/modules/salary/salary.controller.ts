@@ -12,17 +12,38 @@ import {
 import { SalaryService } from "./salary.service.js";
 import { toIntID } from "../../db/index.js";
 
-@Controller("api/:schoolId/salaries")
+import { Headers } from "@nestjs/common";
+
+@Controller(["api/salaries", "api/:schoolId/salaries"])
 export class SalaryController {
   constructor(private readonly salaryService: SalaryService) {}
 
   @Get()
   async getSalaries(
-    @Param("schoolId") schoolIdStr: string,
-    @Query("academicYear") academicYear?: string
+    @Param("schoolId") schoolIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string,
+    @Query("academicYear") academicYear?: string,
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("teacherId") teacherIdStr?: string,
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
-    return this.salaryService.getSalaries(schoolId, academicYear);
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const teacherId = teacherIdStr ? toIntID(teacherIdStr) : undefined;
+
+    return this.salaryService.getSalaries({
+      schoolId,
+      academicYearHeader,
+      academicYear,
+      page,
+      limit,
+      search,
+      status,
+      teacherId,
+    });
   }
 
   @Post()

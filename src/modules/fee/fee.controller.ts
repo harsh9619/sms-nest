@@ -14,17 +14,36 @@ import {
 import { FeeService } from "./fee.service.js";
 import { toIntID } from "../../db/index.js";
 
-@Controller("api/:schoolId/fees")
+@Controller(["api/fees", "api/:schoolId/fees"])
 export class FeeController {
   constructor(@Inject(FeeService) private readonly feeService: FeeService) { }
 
   @Get()
   async getFees(
-    @Param("schoolId") schoolIdStr: string,
+    @Param("schoolId") schoolIdStr?: string,
     @Headers("academicyearid") academicYearHeader?: string,
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("feeType") feeType?: string,
+    @Query("studentId") studentIdStr?: string,
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
-    return this.feeService.getFees(schoolId, academicYearHeader);
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    const studentId = studentIdStr ? toIntID(studentIdStr) : undefined;
+
+    return this.feeService.getFees({
+      schoolId,
+      academicYearHeader,
+      page,
+      limit,
+      search,
+      status,
+      feeType,
+      studentId,
+    });
   }
 
   @Post()
