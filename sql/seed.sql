@@ -78,6 +78,10 @@ OVERRIDING SYSTEM VALUE VALUES
   (103, 1,   'Priya Iyer',       'student_104@greenwood.edu.in', 'admin123', 'student',      '9600000004', TRUE),
   (104, 1,   'Aryan Joshi',      'student_105@greenwood.edu.in', 'admin123', 'student',      '9600000005', TRUE),
   (105, 1,   'Neha Pillai',      'student_106@greenwood.edu.in', 'admin123', 'student',      '9600000006', TRUE),
+  (106, 1,   'Aarush Sharma',    'student_107@greenwood.edu.in', 'admin123', 'student',      '9600000007', TRUE),
+  (107, 1,   'Ishani Patel',     'student_108@greenwood.edu.in', 'admin123', 'student',      '9600000008', TRUE),
+  (108, 1,   'Vihaan Verma',     'student_109@greenwood.edu.in', 'admin123', 'student',      '9600000009', TRUE),
+  (109, 1,   'Myra Gupta',       'student_110@greenwood.edu.in', 'admin123', 'student',      '9600000010', TRUE),
 
   -- Students — Sunrise user accounts
   (110, 2,   'Ravi Menon',       'student_201@sunrise.edu.in',   'admin123', 'student',      '9500000001', TRUE),
@@ -191,6 +195,8 @@ OVERRIDING SYSTEM VALUE VALUES
   (2, 1, 1, 7,  2, '5',  'B'),   -- division_master_id 2 = B
   (3, 1, 1, 10, 1, '8',  'A'),   -- class_master_id 10 = Class 8
   (4, 1, 1, 12, 1, '10', 'A'),   -- class_master_id 12 = Class 10
+  (7, 1, 1, 3,  1, '1',  'A'),   -- class_master_id 3 = Class 1, division_master_id 1 = A
+  (8, 1, 1, 4,  1, '2',  'A'),   -- class_master_id 4 = Class 2, division_master_id 1 = A
 
   -- Sunrise classes  (school_academic_year_id=3 → 2024-25 for school 2)
   (5, 2, 3, 8,  1, '6',  'A'),   -- class_master_id 8 = Class 6
@@ -235,6 +241,20 @@ OVERRIDING SYSTEM VALUE VALUES
   (17, 1, 1, 4, 1, 1),   -- English
   (28, 1, 1, 4, 1, 13),  -- Economics
 
+  -- Greenwood 1A (class_id=7, say_id=1, division_master_id=1)
+  (29, 1, 1, 7, 1, 4),   -- Mathematics
+  (30, 1, 1, 7, 1, 1),   -- English
+  (31, 1, 1, 7, 1, 5),   -- Science
+  (32, 1, 1, 7, 1, 2),   -- Hindi
+  (33, 1, 1, 7, 1, 19),  -- Art & Craft
+
+  -- Greenwood 2A (class_id=8, say_id=1, division_master_id=1)
+  (34, 1, 1, 8, 1, 4),   -- Mathematics
+  (35, 1, 1, 8, 1, 1),   -- English
+  (36, 1, 1, 8, 1, 5),   -- Science
+  (37, 1, 1, 8, 1, 2),   -- Hindi
+  (38, 1, 1, 8, 1, 16),  -- Computer Science
+
   -- Sunrise 6A (class_id=5, say_id=3, division_master_id=1)
   (18, 2, 3, 5, 1, 4),   -- Mathematics
   (19, 2, 3, 5, 1, 1),   -- English
@@ -258,6 +278,8 @@ OVERRIDING SYSTEM VALUE VALUES
   (2, 1, 1, 2, 2, 11, TRUE),   -- class 5B → division_master_id 2 (B)
   (3, 1, 1, 3, 1, 12, TRUE),   -- class 8A → division_master_id 1 (A)
   (4, 1, 1, 4, 1, 13, TRUE),   -- class 10A → division_master_id 1 (A)
+  (7, 1, 1, 7, 1, 10, TRUE),   -- class 1A → division_master_id 1 (A)
+  (8, 1, 1, 8, 1, 11, TRUE),   -- class 2A → division_master_id 1 (A)
   (5, 2, 3, 5, 1, 20, TRUE),   -- class 6A → division_master_id 1 (A)
   (6, 2, 3, 6, 1, 21, TRUE)    -- class 9A → division_master_id 1 (A)
 ON CONFLICT (id) DO NOTHING;
@@ -278,6 +300,10 @@ OVERRIDING SYSTEM VALUE VALUES
   (8,  1, 1, 3, 1, 4,  10), (9,  1, 1, 3, 1, 6,  11), (10, 1, 1, 3, 1, 7,  12), (11, 1, 1, 3, 1, 8,  13), (12, 1, 1, 3, 1, 21, 12),
   -- Greenwood 10A (division A = 1)
   (13, 1, 1, 4, 1, 4,  13), (14, 1, 1, 4, 1, 6,  11), (15, 1, 1, 4, 1, 7,  12), (16, 1, 1, 4, 1, 16, 10), (17, 1, 1, 4, 1, 1,  12),
+  -- Greenwood 1A (division A = 1)
+  (22, 1, 1, 7, 1, 4,  10), (23, 1, 1, 7, 1, 1,  12), (24, 1, 1, 7, 1, 5,  11),
+  -- Greenwood 2A (division A = 1)
+  (25, 1, 1, 8, 1, 4,  11), (26, 1, 1, 8, 1, 1,  10), (27, 1, 1, 8, 1, 5,  12),
   -- Sunrise 6A (division A = 1)
   (18, 2, 3, 5, 1, 4,  20), (19, 2, 3, 5, 1, 1,  21),
   -- Sunrise 9A (division A = 1)
@@ -302,6 +328,12 @@ OVERRIDING SYSTEM VALUE VALUES
   -- Class 10A Greenwood  (division A = 1)
   (105, 1, 1, 104, 4, 1, 'X-001',  '2008-08-18', 'male',   'B-',  '10 Lake Rd, Mumbai',    'Nilesh Joshi',  '9601111005', '2016-06-01'),
   (106, 1, 1, 105, 4, 1, 'X-002',  '2009-02-25', 'female', 'O-',  '55 Crown Rd, Mumbai',   'Ganesh Pillai', '9601111006', '2016-06-01'),
+  -- Class 1A Greenwood  (class_id=7)
+  (107, 1, 1, 106, 7, 1, '1A-001', '2018-04-12', 'male',   'A+',  '12 Park St, Mumbai',    'Vikram Sharma', '9601111007', '2024-04-01'),
+  (108, 1, 1, 107, 7, 1, '1A-002', '2018-08-25', 'female', 'B+',  '45 Lake Rd, Mumbai',   'Sanjay Patel',  '9601111008', '2024-04-01'),
+  -- Class 2A Greenwood  (class_id=8)
+  (109, 1, 1, 108, 8, 1, '2A-001', '2017-02-14', 'male',   'O+',  '88 Hill Ave, Mumbai',  'Deepak Verma',  '9601111009', '2024-04-01'),
+  (110, 1, 1, 109, 8, 1, '2A-002', '2017-11-09', 'female', 'AB+', '30 Green Rd, Mumbai', 'Anil Gupta',    '9601111010', '2024-04-01'),
 
   -- Sunrise students  (say_id=3 → 2024-25 school 2)
   (201, 2, 3, 110, 5, 1, '6A-001', '2013-05-12', 'male',   'A+',  '7 Sea View, Delhi',     'Rajiv Menon',   '9501111001', '2021-04-01'),
@@ -384,62 +416,114 @@ ON CONFLICT (student_id, date) DO NOTHING;
 -- FEES
 -- =======================
 
-INSERT INTO fees (school_id, student_id, amount, fee_type, description, due_date, status, paid_at) VALUES
-  -- Greenwood students
-  (1, 101, 15000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-10 09:00:00+05:30'),
-  (1, 101,  2000, 'exam',      'Term 1 Exam Fee', '2024-05-01', 'paid',    '2024-04-28 09:00:00+05:30'),
-  (1, 101,  1500, 'sports',    NULL,              '2024-06-01', 'pending', NULL),
-  (1, 102, 15000, 'tuition',   NULL,              '2024-04-15', 'overdue', NULL),
-  (1, 102,  2000, 'exam',      'Term 1 Exam Fee', '2024-05-01', 'pending', NULL),
-  (1, 103, 15000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-12 09:00:00+05:30'),
-  (1, 104, 18000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-08 09:00:00+05:30'),
-  (1, 104,  3000, 'transport', NULL,              '2024-04-15', 'pending', NULL),
-  (1, 105, 20000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-05 09:00:00+05:30'),
-  (1, 106, 20000, 'tuition',   NULL,              '2024-04-15', 'overdue', NULL),
+INSERT INTO fees (school_id, student_id, amount, fee_type, month, description, due_date, status, paid_at) VALUES
+  -- Greenwood existing students
+  (1, 101, 15000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-10 09:00:00+05:30'),
+  (1, 101,  2000, 'exam',      '2024-05', 'Term 1 Exam Fee', '2024-05-01', 'paid',    '2024-04-28 09:00:00+05:30'),
+  (1, 101,  1500, 'sports',    '2024-06', NULL,              '2024-06-01', 'pending', NULL),
+  (1, 102, 15000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'overdue', NULL),
+  (1, 102,  2000, 'exam',      '2024-05', 'Term 1 Exam Fee', '2024-05-01', 'pending', NULL),
+  (1, 103, 15000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-12 09:00:00+05:30'),
+  (1, 104, 18000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-08 09:00:00+05:30'),
+  (1, 104,  3000, 'transport', '2024-04', NULL,              '2024-04-15', 'pending', NULL),
+  (1, 105, 20000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-05 09:00:00+05:30'),
+  (1, 106, 20000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'overdue', NULL),
+
+  -- Class 1 Student 107 (Aarush Sharma) - April, May, June 2026
+  (1, 107, 3000, 'tuition', '2026-04', 'Monthly Tuition Fee - April 2026', '2026-04-10', 'paid', '2026-04-05 10:00:00+05:30'),
+  (1, 107,  200, 'lab',     '2026-04', 'Library Charge - April 2026', '2026-04-10', 'paid', '2026-04-05 10:00:00+05:30'),
+  (1, 107, 1000, 'annual',  '2026-04', 'Annual Activity Fee - April 2026', '2026-04-15', 'paid', '2026-04-05 10:00:00+05:30'),
+  (1, 107, 3000, 'tuition', '2026-05', 'Monthly Tuition Fee - May 2026', '2026-05-10', 'paid', '2026-05-08 11:30:00+05:30'),
+  (1, 107,  200, 'lab',     '2026-05', 'Library Charge - May 2026', '2026-05-10', 'paid', '2026-05-08 11:30:00+05:30'),
+  (1, 107, 3000, 'tuition', '2026-06', 'Monthly Tuition Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 107,  200, 'lab',     '2026-06', 'Library Charge - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 107,  500, 'exam',    '2026-06', 'Term 1 Exam Fee - June 2026', '2026-06-15', 'pending', NULL),
+
+  -- Class 1 Student 108 (Ishani Patel) - April, May, June 2026
+  (1, 108, 3000, 'tuition', '2026-04', 'Monthly Tuition Fee - April 2026', '2026-04-10', 'paid', '2026-04-09 14:00:00+05:30'),
+  (1, 108,  200, 'lab',     '2026-04', 'Library Charge - April 2026', '2026-04-10', 'paid', '2026-04-09 14:00:00+05:30'),
+  (1, 108, 1000, 'annual',  '2026-04', 'Annual Activity Fee - April 2026', '2026-04-15', 'paid', '2026-04-09 14:00:00+05:30'),
+  (1, 108, 3000, 'tuition', '2026-05', 'Monthly Tuition Fee - May 2026', '2026-05-10', 'overdue', NULL),
+  (1, 108,  200, 'lab',     '2026-05', 'Library Charge - May 2026', '2026-05-10', 'overdue', NULL),
+  (1, 108, 3000, 'tuition', '2026-06', 'Monthly Tuition Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 108,  200, 'lab',     '2026-06', 'Library Charge - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 108,  500, 'exam',    '2026-06', 'Term 1 Exam Fee - June 2026', '2026-06-15', 'pending', NULL),
+
+  -- Class 2 Student 109 (Vihaan Verma) - April, May, June 2026
+  (1, 109, 3200, 'tuition',   '2026-04', 'Monthly Tuition Fee - April 2026', '2026-04-10', 'paid', '2026-04-06 09:15:00+05:30'),
+  (1, 109,  600, 'transport', '2026-04', 'Bus Transport Fee - April 2026', '2026-04-10', 'paid', '2026-04-06 09:15:00+05:30'),
+  (1, 109,  400, 'computer',  '2026-04', 'Computer & IT Fee - April 2026', '2026-04-10', 'paid', '2026-04-06 09:15:00+05:30'),
+  (1, 109, 1500, 'uniforms',  '2026-04', 'Uniform Charge - April 2026', '2026-04-15', 'paid', '2026-04-06 09:15:00+05:30'),
+  (1, 109, 3200, 'tuition',   '2026-05', 'Monthly Tuition Fee - May 2026', '2026-05-10', 'paid', '2026-05-04 15:45:00+05:30'),
+  (1, 109,  600, 'transport', '2026-05', 'Bus Transport Fee - May 2026', '2026-05-10', 'paid', '2026-05-04 15:45:00+05:30'),
+  (1, 109,  400, 'computer',  '2026-05', 'Computer & IT Fee - May 2026', '2026-05-10', 'paid', '2026-05-04 15:45:00+05:30'),
+  (1, 109, 3200, 'tuition',   '2026-06', 'Monthly Tuition Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 109,  600, 'transport', '2026-06', 'Bus Transport Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 109,  400, 'computer',  '2026-06', 'Computer & IT Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 109,  500, 'exam',      '2026-06', 'Term 1 Exam Fee - June 2026', '2026-06-15', 'pending', NULL),
+
+  -- Class 2 Student 110 (Myra Gupta) - April, May, June 2026
+  (1, 110, 3200, 'tuition',   '2026-04', 'Monthly Tuition Fee - April 2026', '2026-04-10', 'paid', '2026-04-10 16:20:00+05:30'),
+  (1, 110,  600, 'transport', '2026-04', 'Bus Transport Fee - April 2026', '2026-04-10', 'paid', '2026-04-10 16:20:00+05:30'),
+  (1, 110,  400, 'computer',  '2026-04', 'Computer & IT Fee - April 2026', '2026-04-10', 'paid', '2026-04-10 16:20:00+05:30'),
+  (1, 110, 1500, 'uniforms',  '2026-04', 'Uniform Charge - April 2026', '2026-04-15', 'paid', '2026-04-10 16:20:00+05:30'),
+  (1, 110, 3200, 'tuition',   '2026-05', 'Monthly Tuition Fee - May 2026', '2026-05-10', 'overdue', NULL),
+  (1, 110,  600, 'transport', '2026-05', 'Bus Transport Fee - May 2026', '2026-05-10', 'overdue', NULL),
+  (1, 110,  400, 'computer',  '2026-05', 'Computer & IT Fee - May 2026', '2026-05-10', 'overdue', NULL),
+  (1, 110, 3200, 'tuition',   '2026-06', 'Monthly Tuition Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 110,  600, 'transport', '2026-06', 'Bus Transport Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 110,  400, 'computer',  '2026-06', 'Computer & IT Fee - June 2026', '2026-06-10', 'pending', NULL),
+  (1, 110,  500, 'exam',      '2026-06', 'Term 1 Exam Fee - June 2026', '2026-06-15', 'pending', NULL),
 
   -- Sunrise students
-  (2, 201, 12000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-09 09:00:00+05:30'),
-  (2, 202, 12000, 'tuition',   NULL,              '2024-04-15', 'pending', NULL),
-  (2, 203, 14000, 'tuition',   NULL,              '2024-04-15', 'paid',    '2024-04-07 09:00:00+05:30')
+  (2, 201, 12000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-09 09:00:00+05:30'),
+  (2, 202, 12000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'pending', NULL),
+  (2, 203, 14000, 'tuition',   '2024-04', NULL,              '2024-04-15', 'paid',    '2024-04-07 09:00:00+05:30')
 ON CONFLICT DO NOTHING;
 
 -- =======================
 -- SCHOOL CLASS FEE STRUCTURES
 -- =======================
 
-INSERT INTO school_class_fee_structures (id, school_id, school_academic_year_id, class_master_id, fee_type, fee_name, amount, frequency, due_day, is_mandatory, description)
+INSERT INTO school_class_fee_structures (id, school_id, school_academic_year_id, class_master_id, fee_type, fee_name, amount, frequency, due_day, month, is_mandatory, description)
 OVERRIDING SYSTEM VALUE VALUES
   -- Greenwood Public School (school_id = 1)
-  (1,  1, 1, 1,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, TRUE,  'LKG Monthly Tuition'),
-  (2,  1, 1, 2,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, TRUE,  'UKG Monthly Tuition'),
-  (3,  1, 1, 3,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Class 1 Monthly Tuition'),
-  (4,  1, 1, 3,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 1 Mid-term Exam Fee'),
-  (5,  1, 1, 4,  'tuition',   'Monthly Tuition Fee', 3200.00, 'monthly',  10, TRUE,  'Class 2 Monthly Tuition'),
-  (6,  1, 1, 4,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 2 Mid-term Exam Fee'),
-  (7,  1, 1, 5,  'tuition',   'Monthly Tuition Fee', 3400.00, 'monthly',  10, TRUE,  'Class 3 Monthly Tuition'),
-  (8,  1, 1, 5,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, TRUE,  'Class 3 Mid-term Exam Fee'),
-  (9,  1, 1, 6,  'tuition',   'Monthly Tuition Fee', 3600.00, 'monthly',  10, TRUE,  'Class 4 Monthly Tuition'),
-  (10, 1, 1, 6,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, TRUE,  'Class 4 Mid-term Exam Fee'),
-  (11, 1, 1, 7,  'tuition',   'Monthly Tuition Fee', 3800.00, 'monthly',  10, TRUE,  'Class 5 Monthly Tuition'),
-  (12, 1, 1, 7,  'transport', 'Bus Transport Fee',   800.00,  'monthly',  10, FALSE, 'Optional school bus transport'),
-  (13, 1, 1, 7,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, TRUE,  'Class 5 Mid-term Exam Fee'),
-  (14, 1, 1, 8,  'tuition',   'Monthly Tuition Fee', 4200.00, 'monthly',  10, TRUE,  'Class 6 Monthly Tuition'),
-  (15, 1, 1, 8,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, TRUE,  'Class 6 Mid-term Exam Fee'),
-  (16, 1, 1, 9,  'tuition',   'Monthly Tuition Fee', 4500.00, 'monthly',  10, TRUE,  'Class 7 Monthly Tuition'),
-  (17, 1, 1, 9,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, TRUE,  'Class 7 Mid-term Exam Fee'),
-  (18, 1, 1, 10, 'tuition',   'Monthly Tuition Fee', 4800.00, 'monthly',  10, TRUE,  'Class 8 Monthly Tuition'),
-  (19, 1, 1, 10, 'other',     'Annual Science Lab',  1000.00, 'annually', 15, TRUE,  'Annual lab equipment charge'),
-  (20, 1, 1, 10, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Class 8 Mid-term Exam Fee'),
-  (21, 1, 1, 11, 'tuition',   'Monthly Tuition Fee', 5200.00, 'monthly',  10, TRUE,  'Class 9 Monthly Tuition'),
-  (22, 1, 1, 11, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, TRUE,  'Class 9 Mid-term Exam Fee'),
-  (23, 1, 1, 12, 'tuition',   'Monthly Tuition Fee', 5500.00, 'monthly',  10, TRUE,  'Class 10 Monthly Tuition'),
-  (24, 1, 1, 12, 'other',     'Computer Lab Fee',    1200.00, 'annually', 15, TRUE,  'Annual CS lab access'),
-  (25, 1, 1, 12, 'exam',      'Board Exam Fee',      1500.00, 'one_time', 20, TRUE,  'Board registration & exam fee'),
+  (1,  1, 1, 1,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, 'all', TRUE,  'LKG Monthly Tuition'),
+  (2,  1, 1, 2,  'tuition',   'Monthly Tuition Fee', 2500.00, 'monthly',  10, 'all', TRUE,  'UKG Monthly Tuition'),
+  (3,  1, 1, 3,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, 'all', TRUE,  'Class 1 Monthly Tuition'),
+  (4,  1, 1, 3,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, '06',  TRUE,  'Class 1 Mid-term Exam Fee'),
+  (28, 1, 1, 3,  'lab',       'Library Charge',     200.00,  'monthly',  10, 'all', TRUE,  'Class 1 Monthly Library Charge'),
+  (29, 1, 1, 3,  'annual',    'Annual Activity Fee',1000.00, 'annually', 15, '04',  TRUE,  'Class 1 Annual Activity Fee'),
+  (5,  1, 1, 4,  'tuition',   'Monthly Tuition Fee', 3200.00, 'monthly',  10, 'all', TRUE,  'Class 2 Monthly Tuition'),
+  (6,  1, 1, 4,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, '06',  TRUE,  'Class 2 Mid-term Exam Fee'),
+  (30, 1, 1, 4,  'transport', 'Bus Transport Fee',  600.00,  'monthly',  10, 'all', FALSE, 'Class 2 Bus Transport Fee'),
+  (31, 1, 1, 4,  'computer',  'Computer & IT Fee',  400.00,  'monthly',  10, 'all', TRUE,  'Class 2 Computer Access Fee'),
+  (32, 1, 1, 4,  'uniforms',  'Uniform Charge',     1500.00, 'one_time', 15, '04',  TRUE,  'Class 2 Uniform Set'),
+  (7,  1, 1, 5,  'tuition',   'Monthly Tuition Fee', 3400.00, 'monthly',  10, 'all', TRUE,  'Class 3 Monthly Tuition'),
+  (8,  1, 1, 5,  'exam',      'Term 1 Exam Fee',    500.00,  'one_time', 15, '06',  TRUE,  'Class 3 Mid-term Exam Fee'),
+  (9,  1, 1, 6,  'tuition',   'Monthly Tuition Fee', 3600.00, 'monthly',  10, 'all', TRUE,  'Class 4 Monthly Tuition'),
+  (10, 1, 1, 6,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, '06',  TRUE,  'Class 4 Mid-term Exam Fee'),
+  (11, 1, 1, 7,  'tuition',   'Monthly Tuition Fee', 3800.00, 'monthly',  10, 'all', TRUE,  'Class 5 Monthly Tuition'),
+  (12, 1, 1, 7,  'transport', 'Bus Transport Fee',   800.00,  'monthly',  10, 'all', FALSE, 'Optional school bus transport'),
+  (13, 1, 1, 7,  'exam',      'Term 1 Exam Fee',    600.00,  'one_time', 15, '06',  TRUE,  'Class 5 Mid-term Exam Fee'),
+  (14, 1, 1, 8,  'tuition',   'Monthly Tuition Fee', 4200.00, 'monthly',  10, 'all', TRUE,  'Class 6 Monthly Tuition'),
+  (15, 1, 1, 8,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, '06',  TRUE,  'Class 6 Mid-term Exam Fee'),
+  (16, 1, 1, 9,  'tuition',   'Monthly Tuition Fee', 4500.00, 'monthly',  10, 'all', TRUE,  'Class 7 Monthly Tuition'),
+  (17, 1, 1, 9,  'exam',      'Term 1 Exam Fee',    700.00,  'one_time', 15, '06',  TRUE,  'Class 7 Mid-term Exam Fee'),
+  (18, 1, 1, 10, 'tuition',   'Monthly Tuition Fee', 4800.00, 'monthly',  10, 'all', TRUE,  'Class 8 Monthly Tuition'),
+  (19, 1, 1, 10, 'other',     'Annual Science Lab',  1000.00, 'annually', 15, '04',  TRUE,  'Annual lab equipment charge'),
+  (20, 1, 1, 10, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, '06',  TRUE,  'Class 8 Mid-term Exam Fee'),
+  (21, 1, 1, 11, 'tuition',   'Monthly Tuition Fee', 5200.00, 'monthly',  10, 'all', TRUE,  'Class 9 Monthly Tuition'),
+  (22, 1, 1, 11, 'exam',      'Term 1 Exam Fee',    800.00,  'one_time', 15, '06',  TRUE,  'Class 9 Mid-term Exam Fee'),
+  (23, 1, 1, 12, 'tuition',   'Monthly Tuition Fee', 5500.00, 'monthly',  10, 'all', TRUE,  'Class 10 Monthly Tuition'),
+  (24, 1, 1, 12, 'other',     'Computer Lab Fee',    1200.00, 'annually', 15, '04',  TRUE,  'Annual CS lab access'),
+  (25, 1, 1, 12, 'exam',      'Board Exam Fee',      1500.00, 'one_time', 20, '06',  TRUE,  'Board registration & exam fee'),
 
   -- Sunrise Academy (school_id = 2)
-  (26, 2, 3, 8,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, TRUE,  'Monthly tuition fee'),
-  (27, 2, 3, 11, 'tuition',   'Monthly Tuition Fee', 4000.00, 'monthly',  10, TRUE,  'Monthly tuition fee')
+  (26, 2, 3, 8,  'tuition',   'Monthly Tuition Fee', 3000.00, 'monthly',  10, 'all', TRUE,  'Monthly tuition fee'),
+  (27, 2, 3, 11, 'tuition',   'Monthly Tuition Fee', 4000.00, 'monthly',  10, 'all', TRUE,  'Monthly tuition fee')
 ON CONFLICT (id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('public.school_class_fee_structures', 'id'), MAX(id), TRUE) FROM public.school_class_fee_structures;
 
 -- =======================
 -- MARKS (Final exam scores)

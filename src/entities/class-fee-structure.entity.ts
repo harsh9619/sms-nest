@@ -52,6 +52,9 @@ export class SchoolClassFeeStructure {
   @Column({ type: "int", default: 10 })
   due_day: number;
 
+  @Column({ type: "varchar", length: 50, nullable: true })
+  month: string;
+
   @Column({ type: "boolean", default: true })
   is_mandatory: boolean;
 

@@ -49,6 +49,9 @@ export class Fee {
   @Column({ type: "date", nullable: true })
   due_date: string;
 
+  @Column({ type: "varchar", length: 50, nullable: true })
+  month: string;
+
   @Column({ type: "varchar", default: "pending" })
   status: string;
 

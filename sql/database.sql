@@ -25,7 +25,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
   CREATE TYPE fee_type AS ENUM (
-    'tuition', 'exam', 'sports', 'library', 'transport', 'other'
+    'tuition', 'exam', 'sports', 'library', 'transport', 'hostel', 'lab', 'annual', 'computer', 'uniforms', 'other'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -494,7 +494,8 @@ CREATE TABLE IF NOT EXISTS fees (
   school_academic_year_id INT        REFERENCES school_academic_years(id) ON DELETE SET NULL,
   student_id              INT        NOT NULL REFERENCES students(id)             ON DELETE CASCADE,
   amount                  NUMERIC(10,2) NOT NULL,
-  fee_type                fee_type      NOT NULL DEFAULT 'tuition',
+  fee_type                VARCHAR(50)   NOT NULL DEFAULT 'tuition',
+  month                   VARCHAR(50),
   description             TEXT,
   due_date                DATE,
   status                  fee_status    NOT NULL DEFAULT 'pending',
@@ -513,11 +514,12 @@ CREATE TABLE IF NOT EXISTS school_class_fee_structures (
   school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT           REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_master_id         INT           NOT NULL REFERENCES class_masters(id)        ON DELETE CASCADE,
-  fee_type                fee_type      NOT NULL DEFAULT 'tuition',
+  fee_type                VARCHAR(50)   NOT NULL DEFAULT 'tuition',
   fee_name                VARCHAR(100)  NOT NULL,
   amount                  NUMERIC(10,2) NOT NULL DEFAULT 0,
   frequency               VARCHAR(20)   NOT NULL DEFAULT 'monthly',
   due_day                 INT           NOT NULL DEFAULT 10,
+  month                   VARCHAR(50),
   is_mandatory            BOOLEAN       NOT NULL DEFAULT TRUE,
   description             TEXT,
   created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),

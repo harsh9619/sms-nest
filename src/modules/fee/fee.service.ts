@@ -34,6 +34,7 @@ export class FeeService {
       amount: Number(f.amount),
       type: f.fee_type,
       feeType: f.fee_type,
+      month: f.month || undefined,
       dueDate: f.due_date,
       paidDate: f.paid_at ? new Date(f.paid_at).toISOString() : null,
       status: f.status,
@@ -50,9 +51,10 @@ export class FeeService {
     search?: string;
     status?: string;
     feeType?: string;
+    month?: string;
     studentId?: number;
   }) {
-    const { schoolId, academicYearHeader, page, limit, search, status, feeType, studentId } = params;
+    const { schoolId, academicYearHeader, page, limit, search, status, feeType, month, studentId } = params;
 
     let sayId: number | null = null;
     if (schoolId) {
@@ -81,10 +83,13 @@ export class FeeService {
     if (feeType && feeType !== "all") {
       qb.andWhere("f.fee_type = :feeType", { feeType });
     }
+    if (month && month !== "all") {
+      qb.andWhere("f.month = :month", { month });
+    }
     if (search && search.trim()) {
       const q = `%${search.trim().toLowerCase()}%`;
       qb.andWhere(
-        "(LOWER(u.name) LIKE :q OR LOWER(st.roll_no) LIKE :q OR LOWER(c.name) LIKE :q OR LOWER(f.fee_type) LIKE :q OR LOWER(f.description) LIKE :q)",
+        "(LOWER(u.name) LIKE :q OR LOWER(st.roll_no) LIKE :q OR LOWER(c.name) LIKE :q OR LOWER(f.fee_type) LIKE :q OR LOWER(f.description) LIKE :q OR LOWER(f.month) LIKE :q)",
         { q }
       );
     }
@@ -135,6 +140,7 @@ export class FeeService {
       amount: Number(feeObj.amount),
       type: feeObj.fee_type,
       feeType: feeObj.fee_type,
+      month: feeObj.month || undefined,
       dueDate: feeObj.due_date,
       paidDate: feeObj.paid_at ? new Date(feeObj.paid_at).toISOString() : null,
       status: feeObj.status,
@@ -144,10 +150,10 @@ export class FeeService {
   }
 
   async createFee(schoolId: number, data: any) {
-    const { studentId, amount, feeType, dueDate, paidDate, status, remarks } = data;
+    const { studentId, amount, feeType, dueDate, month, paidDate, status, remarks } = data;
 
-    const validFeeTypes = ["tuition", "exam", "sports", "library", "transport", "other"];
-    const dbFeeType = validFeeTypes.includes(feeType) ? feeType : "other";
+    const validFeeTypes = ["tuition", "exam", "sports", "library", "transport", "hostel", "lab", "annual", "computer", "uniforms", "other"];
+    const dbFeeType = validFeeTypes.includes(feeType) ? feeType : (feeType || "other");
     const description = remarks || (feeType !== dbFeeType ? feeType : null);
 
     let sayId: number | null = null;
@@ -161,6 +167,7 @@ export class FeeService {
       student_id: studentId,
       amount,
       fee_type: dbFeeType,
+      month: month || new Date().toISOString().slice(0, 7),
       description,
       due_date: dueDate || new Date().toISOString().split("T")[0],
       status: status || "pending",
@@ -172,15 +179,16 @@ export class FeeService {
   }
 
   async updateFee(feeId: number, data: any) {
-    const { amount, feeType, remarks, dueDate, status, paidDate } = data;
+    const { amount, feeType, remarks, dueDate, month, status, paidDate } = data;
 
-    const validFeeTypes = ["tuition", "exam", "sports", "library", "transport", "other"];
-    const dbFeeType = validFeeTypes.includes(feeType) ? feeType : "other";
+    const validFeeTypes = ["tuition", "exam", "sports", "library", "transport", "hostel", "lab", "annual", "computer", "uniforms", "other"];
+    const dbFeeType = validFeeTypes.includes(feeType) ? feeType : (feeType || "other");
     const description = remarks || (feeType !== dbFeeType ? feeType : null);
 
     await this.feeRepo.update(feeId, {
       amount,
       fee_type: dbFeeType,
+      month,
       description,
       due_date: dueDate,
       status,
@@ -219,36 +227,60 @@ export class FeeService {
       amount: Number(item.amount),
       frequency: item.frequency,
       dueDay: item.due_day,
+      month: item.month || undefined,
       isMandatory: item.is_mandatory,
       description: item.description,
     }));
   }
 
   async createOrUpdateClassFeeStructure(schoolId: number, data: any) {
-    const { id, classMasterId, feeType, feeName, amount, frequency, dueDay, isMandatory, description } = data;
+    const { id, classMasterId, classMasterIds, feeType, feeName, amount, frequency, dueDay, month, isMandatory, description } = data;
 
     if (id) {
       await this.classFeeStructRepo.update(id, {
-        class_master_id: classMasterId,
+        class_master_id: classMasterId || (Array.isArray(classMasterIds) ? classMasterIds[0] : undefined),
         fee_type: feeType || "tuition",
         fee_name: feeName,
         amount: amount || 0,
         frequency: frequency || "monthly",
         due_day: dueDay || 10,
+        month,
         is_mandatory: isMandatory !== undefined ? isMandatory : true,
         description,
       });
       return id;
     }
 
+    if (Array.isArray(classMasterIds) && classMasterIds.length > 0) {
+      const createdIds: number[] = [];
+      for (const cmId of classMasterIds) {
+        const newStruct = this.classFeeStructRepo.create({
+          school_id: schoolId,
+          class_master_id: Number(cmId),
+          fee_type: feeType || "tuition",
+          fee_name: feeName,
+          amount: amount || 0,
+          frequency: frequency || "monthly",
+          due_day: dueDay || 10,
+          month,
+          is_mandatory: isMandatory !== undefined ? isMandatory : true,
+          description,
+        });
+        const saved = await this.classFeeStructRepo.save(newStruct);
+        createdIds.push(saved.id);
+      }
+      return createdIds[0];
+    }
+
     const newStruct = this.classFeeStructRepo.create({
       school_id: schoolId,
-      class_master_id: classMasterId,
+      class_master_id: Number(classMasterId),
       fee_type: feeType || "tuition",
       fee_name: feeName,
       amount: amount || 0,
       frequency: frequency || "monthly",
       due_day: dueDay || 10,
+      month,
       is_mandatory: isMandatory !== undefined ? isMandatory : true,
       description,
     });
@@ -261,7 +293,7 @@ export class FeeService {
     await this.classFeeStructRepo.delete(id);
   }
 
-  async generateInvoicesFromClassStructure(schoolId: number, classMasterId: number, dueDate?: string, academicYearHeader?: string) {
+  async generateInvoicesFromClassStructure(schoolId: number, classMasterId: number, dueDate?: string, month?: string, academicYearHeader?: string) {
     let sayId: number | null = null;
     if (schoolId) {
       sayId = await this.ayService.getSchoolAcademicYearId(schoolId);
@@ -290,9 +322,28 @@ export class FeeService {
 
     let createdCount = 0;
     const targetDueDate = dueDate || new Date().toISOString().split("T")[0];
+    const targetMonth = month || new Date().toISOString().slice(0, 7);
+
+    // Filter structures matching targetMonth or set to 'all'/recurring
+    const applicableStructures = structures.filter((struct) => {
+      if (!struct.month || struct.month === "all" || struct.month === "every_month") {
+        return true;
+      }
+      const targetMonthStr = targetMonth.toLowerCase();
+      const structMonthStr = struct.month.toLowerCase();
+      return (
+        targetMonthStr.includes(structMonthStr) ||
+        structMonthStr.includes(targetMonthStr) ||
+        targetMonthStr.endsWith("-" + structMonthStr)
+      );
+    });
+
+    if (applicableStructures.length === 0) {
+      return { count: 0, message: `No fee components configured specifically for month ${targetMonth}.` };
+    }
 
     for (const student of students) {
-      for (const struct of structures) {
+      for (const struct of applicableStructures) {
         const newFee = this.feeRepo.create({
           school_id: schoolId,
           school_academic_year_id: sayId,
@@ -300,6 +351,7 @@ export class FeeService {
           amount: struct.amount,
           fee_type: struct.fee_type,
           description: struct.fee_name,
+          month: targetMonth,
           due_date: targetDueDate,
           status: "pending",
         });
@@ -318,6 +370,50 @@ export class FeeService {
     const fee = await this.getFullFeeRecord(feeId);
     if (!fee) throw new NotFoundException("Fee record not found");
 
+    let feeItems = [fee];
+    if (fee.studentId && fee.month) {
+      const qb = this.feeRepo
+        .createQueryBuilder("f")
+        .innerJoinAndSelect("f.student", "st")
+        .innerJoinAndSelect("st.user", "u")
+        .leftJoinAndSelect("st.class", "c")
+        .where("f.student_id = :studentId", { studentId: Number(fee.studentId) })
+        .andWhere("f.month = :month", { month: fee.month });
+
+      const list = await qb.getMany();
+      if (list.length > 0) {
+        feeItems = list.map((f) => this.mapFeeEntity(f));
+      }
+    }
+
+    return this.buildPdfFromFeeItems(feeItems, fee.month);
+  }
+
+  async generateMonthlyFeeReceiptPdf(studentId: number, month: string): Promise<Buffer> {
+    const qb = this.feeRepo
+      .createQueryBuilder("f")
+      .innerJoinAndSelect("f.student", "st")
+      .innerJoinAndSelect("st.user", "u")
+      .leftJoinAndSelect("st.class", "c")
+      .where("f.student_id = :studentId", { studentId })
+      .andWhere("f.month = :month", { month });
+
+    const list = await qb.getMany();
+    if (list.length === 0) {
+      throw new NotFoundException("No fee records found for this student and month");
+    }
+
+    const feeItems = list.map((f) => this.mapFeeEntity(f));
+    return this.buildPdfFromFeeItems(feeItems, month);
+  }
+
+  private buildPdfFromFeeItems(feeItems: any[], targetMonth?: string): Promise<Buffer> {
+    const firstFee = feeItems[0];
+    const totalAmount = feeItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const allPaid = feeItems.every((item) => item.status === "paid");
+    const anyPaid = feeItems.some((item) => item.status === "paid");
+    const overallStatus = allPaid ? "PAID" : anyPaid ? "PARTIALLY PAID" : "PENDING";
+
     return new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ margin: 40, size: "A4" });
       const buffers: Buffer[] = [];
@@ -333,12 +429,12 @@ export class FeeService {
       // Header / Branding
       doc.rect(40, 40, 515, 60).fill(primaryColor);
       doc.fillColor("#ffffff").fontSize(20).font("Helvetica-Bold").text("SCHOOL MANAGEMENT SYSTEM", 55, 52);
-      doc.fontSize(11).font("Helvetica").text("OFFICIAL FEE PAYMENT RECEIPT", 55, 76);
+      doc.fontSize(11).font("Helvetica").text("OFFICIAL CONSOLIDATED MONTHLY FEE RECEIPT", 55, 76);
 
       // Receipt Ref & Status
-      doc.fillColor(darkColor).fontSize(10).font("Helvetica-Bold").text(`Receipt No: #REC-${fee.id}`, 400, 52, { align: "right" });
-      doc.fontSize(9).font("Helvetica").text(`Due Date: ${fee.dueDate ? new Date(fee.dueDate).toLocaleDateString() : "N/A"}`, 400, 68, { align: "right" });
-      doc.text(`Status: ${(fee.status || "pending").toUpperCase()}`, 400, 82, { align: "right" });
+      doc.fillColor(darkColor).fontSize(10).font("Helvetica-Bold").text(`Receipt No: #REC-${firstFee.id}`, 400, 52, { align: "right" });
+      doc.fontSize(9).font("Helvetica").text(`Due Date: ${firstFee.dueDate ? new Date(firstFee.dueDate).toLocaleDateString() : "N/A"}`, 400, 68, { align: "right" });
+      doc.text(`Status: ${overallStatus}`, 400, 82, { align: "right" });
 
       // Student Info Box
       let y = 120;
@@ -346,16 +442,16 @@ export class FeeService {
 
       doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("STUDENT INFORMATION", 55, y + 10);
       doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text("Student Name:", 55, y + 30);
-      doc.font("Helvetica").text(fee.studentName || "N/A", 140, y + 30);
+      doc.font("Helvetica").text(firstFee.studentName || "N/A", 140, y + 30);
       doc.font("Helvetica-Bold").text("Class & Division:", 55, y + 48);
-      doc.font("Helvetica").text(fee.class || "N/A", 140, y + 48);
+      doc.font("Helvetica").text(firstFee.class || "N/A", 140, y + 48);
 
       doc.font("Helvetica-Bold").text("Roll / Student ID:", 330, y + 30);
-      doc.font("Helvetica").text(fee.rollNumber || fee.studentId || "N/A", 430, y + 30);
-      doc.font("Helvetica-Bold").text("Payment Date:", 330, y + 48);
-      doc.font("Helvetica").text(fee.paidDate ? new Date(fee.paidDate).toLocaleDateString() : "Pending Payment", 430, y + 48);
+      doc.font("Helvetica").text(firstFee.rollNumber || firstFee.studentId || "N/A", 430, y + 30);
+      doc.font("Helvetica-Bold").text("Billing Period / Month:", 330, y + 48);
+      doc.font("Helvetica").text(targetMonth || firstFee.month || "N/A", 430, y + 48);
 
-      // Fee Breakdown Table
+      // Fee Breakdown Table Header
       y = 215;
       doc.rect(40, y, 515, 25).fill(primaryColor);
       doc.fillColor("#ffffff").fontSize(10).font("Helvetica-Bold");
@@ -364,24 +460,28 @@ export class FeeService {
       doc.text("AMOUNT (₹)", 440, y + 7, { width: 100, align: "right" });
 
       y = 240;
-      doc.rect(40, y, 515, 30).fillAndStroke("#ffffff", "#f1f5f9");
-      doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text((fee.type || fee.feeType || "Tuition Fee").toUpperCase(), 55, y + 9);
-      doc.font("Helvetica").fontSize(9).text(fee.remarks || "Standard Academic Fee Invoice", 230, y + 9, { width: 200 });
-      doc.font("Helvetica-Bold").text(`₹${Number(fee.amount || 0).toLocaleString()}`, 440, y + 9, { width: 100, align: "right" });
+      feeItems.forEach((item, idx) => {
+        const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+        doc.rect(40, y, 515, 28).fillAndStroke(bg, "#e2e8f0");
+        doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text(String(item.feeType || "Fee Item").toUpperCase(), 55, y + 8);
+        doc.font("Helvetica").fontSize(9).text(item.remarks || `${item.feeType} billing for ${targetMonth || "month"}`, 230, y + 8, { width: 200 });
+        doc.font("Helvetica-Bold").text(`₹${Number(item.amount || 0).toLocaleString()}`, 440, y + 8, { width: 100, align: "right" });
+        y += 28;
+      });
 
       // Total Box
-      y += 45;
+      y += 15;
       doc.rect(40, y, 515, 45).fillAndStroke("#f8fafc", "#cbd5e1");
-      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("TOTAL AMOUNT PAID / DUE:", 55, y + 15);
-      doc.fillColor(fee.status === "paid" ? "#16a34a" : "#d97706")
+      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("TOTAL MONTHLY AMOUNT PAID / DUE:", 55, y + 15);
+      doc.fillColor(allPaid ? "#16a34a" : "#d97706")
         .fontSize(15).font("Helvetica-Bold")
-        .text(`₹${Number(fee.amount || 0).toLocaleString()}`, 410, y + 13, { width: 130, align: "right" });
+        .text(`₹${totalAmount.toLocaleString()}`, 390, y + 13, { width: 150, align: "right" });
 
       // Footer
-      y += 75;
+      y += 65;
       doc.fillColor(secondaryColor).fontSize(8.5).font("Helvetica-Oblique").text("Thank you for your fee payment. Official computer generated fee receipt.", 40, y);
 
-      y += 40;
+      y += 35;
       doc.strokeColor("#cbd5e1").lineWidth(1).moveTo(380, y).lineTo(535, y).stroke();
       doc.fillColor(darkColor).fontSize(9).font("Helvetica-Bold").text("Authorized Cashier / Principal", 380, y + 5, { width: 155, align: "center" });
 

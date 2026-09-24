@@ -29,6 +29,7 @@ export class FeeController {
     @Query("search") search?: string,
     @Query("status") status?: string,
     @Query("feeType") feeType?: string,
+    @Query("month") month?: string,
     @Query("studentId") studentIdStr?: string,
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
@@ -44,6 +45,7 @@ export class FeeController {
       search,
       status,
       feeType,
+      month,
       studentId,
     });
   }
@@ -54,7 +56,7 @@ export class FeeController {
     @Body() body: any
   ) {
     const schoolId = toIntID(String(schoolIdStr));
-    const { studentId, amount, feeType, dueDate, paidDate, status, remarks } = body;
+    const { studentId, amount, feeType, dueDate, month, paidDate, status, remarks } = body;
     const dbStudentId = toIntID(String(studentId));
 
     const newFeeId = await this.feeService.createFee(schoolId, {
@@ -62,6 +64,7 @@ export class FeeController {
       amount,
       feeType,
       dueDate,
+      month,
       paidDate,
       status,
       remarks,
@@ -81,13 +84,14 @@ export class FeeController {
       throw new NotFoundException("Fee record not found");
     }
 
-    const { amount, feeType, remarks, dueDate, status, paidDate } = body;
+    const { amount, feeType, remarks, dueDate, month, status, paidDate } = body;
 
     await this.feeService.updateFee(feeId, {
       amount,
       feeType,
       remarks,
       dueDate,
+      month,
       status,
       paidDate,
     });
@@ -139,12 +143,12 @@ export class FeeController {
   @Post("generate-invoices")
   async generateInvoices(
     @Param("schoolId") schoolIdStr: string,
-    @Body() body: { classMasterId: string | number; dueDate?: string },
+    @Body() body: { classMasterId: string | number; dueDate?: string; month?: string },
     @Headers("academicyearid") academicYearHeader?: string,
   ) {
     const schoolId = toIntID(String(schoolIdStr));
     const classMasterId = toIntID(String(body.classMasterId));
-    return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate, academicYearHeader);
+    return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate, body.month, academicYearHeader);
   }
 
   @Get(":id/download-pdf")
@@ -154,6 +158,22 @@ export class FeeController {
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="fee-receipt-${feeId}.pdf"`,
+      "Content-Length": pdfBuffer.length.toString(),
+    });
+    res.end(pdfBuffer);
+  }
+
+  @Get("monthly-receipt-pdf")
+  async downloadMonthlyFeeReceiptPdf(
+    @Query("studentId") studentIdStr: string,
+    @Query("month") month: string,
+    @Res() res: Response
+  ) {
+    const studentId = toIntID(studentIdStr);
+    const pdfBuffer = await this.feeService.generateMonthlyFeeReceiptPdf(studentId, month);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="monthly-fee-receipt-${month}.pdf"`,
       "Content-Length": pdfBuffer.length.toString(),
     });
     res.end(pdfBuffer);

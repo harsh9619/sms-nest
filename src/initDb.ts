@@ -93,6 +93,9 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
       ADD COLUMN IF NOT EXISTS whatsapp_no         VARCHAR(20),
       ADD COLUMN IF NOT EXISTS scholar_no          VARCHAR(50);
   `);
+
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
+  await appQuery(`ALTER TABLE school_class_fee_structures ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
 }
 
 const ROLE_MAP: Record<string, number> = {
