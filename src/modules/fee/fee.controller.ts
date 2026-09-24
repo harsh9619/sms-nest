@@ -10,7 +10,9 @@ import {
   Headers,
   NotFoundException,
   Inject,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { FeeService } from "./fee.service.js";
 import { toIntID } from "../../db/index.js";
 
@@ -143,5 +145,17 @@ export class FeeController {
     const schoolId = toIntID(String(schoolIdStr));
     const classMasterId = toIntID(String(body.classMasterId));
     return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate, academicYearHeader);
+  }
+
+  @Get(":id/download-pdf")
+  async downloadFeeReceiptPdf(@Param("id") idStr: string, @Res() res: Response) {
+    const feeId = toIntID(idStr);
+    const pdfBuffer = await this.feeService.generateFeeReceiptPdf(feeId);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="fee-receipt-${feeId}.pdf"`,
+      "Content-Length": pdfBuffer.length.toString(),
+    });
+    res.end(pdfBuffer);
   }
 }

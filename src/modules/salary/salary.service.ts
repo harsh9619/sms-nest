@@ -1,6 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import PDFDocument from "pdfkit";
 import { SalaryRecord } from "../../entities/salary-record.entity.js";
 import { SalaryStructure } from "../../entities/salary-structure.entity.js";
 import { User } from "../../entities/user.entity.js";
@@ -377,5 +378,97 @@ export class SalaryService {
       count: createdCount,
       message: `Generated monthly payroll for ${createdCount} staff members for ${month}/${year}.`,
     };
+  }
+
+  async generateSalarySlipPdf(recordId: number): Promise<Buffer> {
+    const sal = await this.getFullSalaryRecord(recordId);
+    if (!sal) throw new NotFoundException("Salary record not found");
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 40, size: "A4" });
+      const buffers: Buffer[] = [];
+
+      doc.on("data", (chunk) => buffers.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(buffers)));
+      doc.on("error", (err) => reject(err));
+
+      const primaryColor = "#1e40af";
+      const secondaryColor = "#475569";
+      const darkColor = "#0f172a";
+
+      // Header / Branding
+      doc.rect(40, 40, 515, 60).fill(primaryColor);
+      doc.fillColor("#ffffff").fontSize(20).font("Helvetica-Bold").text("SCHOOL MANAGEMENT SYSTEM", 55, 52);
+      doc.fontSize(11).font("Helvetica").text("STAFF SALARY PAYSLIP", 55, 76);
+
+      // Ref & Status
+      doc.fillColor(darkColor).fontSize(10).font("Helvetica-Bold").text(`Payslip Ref: #PAY-${sal.id}`, 400, 52, { align: "right" });
+      doc.fontSize(9).font("Helvetica").text(`Pay Period: ${sal.month} ${sal.year}`, 400, 68, { align: "right" });
+      doc.text(`Status: ${(sal.status || "pending").toUpperCase()}`, 400, 82, { align: "right" });
+
+      // Staff Info Box
+      let y = 120;
+      doc.rect(40, y, 515, 75).fillAndStroke("#f8fafc", "#e2e8f0");
+
+      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("STAFF DETAILS", 55, y + 10);
+      doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text("Employee Name:", 55, y + 30);
+      doc.font("Helvetica").text(sal.teacherName || "N/A", 150, y + 30);
+      doc.font("Helvetica-Bold").text("Designation / Role:", 55, y + 48);
+      doc.font("Helvetica").text(sal.designation || "Faculty Member", 150, y + 48);
+
+      doc.font("Helvetica-Bold").text("Email Address:", 320, y + 30);
+      doc.font("Helvetica").text(sal.teacherEmail || "N/A", 410, y + 30);
+      doc.font("Helvetica-Bold").text("Contact Phone:", 320, y + 48);
+      doc.font("Helvetica").text(sal.teacherPhone || "N/A", 410, y + 48);
+
+      // Financial Breakdown Table
+      y = 215;
+      doc.rect(40, y, 515, 25).fill(primaryColor);
+      doc.fillColor("#ffffff").fontSize(10).font("Helvetica-Bold");
+      doc.text("DESCRIPTION / COMPONENTS", 55, y + 7);
+      doc.text("EARNINGS (₹)", 330, y + 7, { width: 100, align: "right" });
+      doc.text("DEDUCTIONS (₹)", 440, y + 7, { width: 100, align: "right" });
+
+      y = 240;
+      const items = [
+        { desc: "Basic Salary Component", earnings: sal.baseSalary || 0, deductions: 0 },
+        { desc: "Allowances & Benefits (HRA, DA, Special)", earnings: sal.allowances || 0, deductions: 0 },
+        { desc: "Statutory & Tax Deductions (PF, Tax, Misc)", earnings: 0, deductions: sal.deductions || 0 },
+      ];
+
+      items.forEach((item, idx) => {
+        const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+        doc.rect(40, y, 515, 24).fillAndStroke(rowBg, "#f1f5f9");
+        doc.fillColor(darkColor).fontSize(9).font("Helvetica").text(item.desc, 55, y + 7);
+        doc.text(item.earnings > 0 ? `₹${item.earnings.toLocaleString()}` : "-", 330, y + 7, { width: 100, align: "right" });
+        doc.text(item.deductions > 0 ? `₹${item.deductions.toLocaleString()}` : "-", 440, y + 7, { width: 100, align: "right" });
+        y += 24;
+      });
+
+      // Totals Box
+      y += 15;
+      const gross = (sal.baseSalary || 0) + (sal.allowances || 0);
+      const net = sal.netSalary || gross - (sal.deductions || 0);
+
+      doc.rect(40, y, 515, 60).fillAndStroke("#f1f5f9", "#cbd5e1");
+      doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text("Gross Earnings:", 55, y + 12);
+      doc.text(`₹${gross.toLocaleString()}`, 160, y + 12);
+
+      doc.text("Total Deductions:", 55, y + 32);
+      doc.text(`₹${(sal.deductions || 0).toLocaleString()}`, 160, y + 32);
+
+      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("NET PAYABLE SALARY:", 300, y + 20);
+      doc.fillColor("#16a34a").fontSize(14).font("Helvetica-Bold").text(`₹${net.toLocaleString()}`, 430, y + 18, { width: 110, align: "right" });
+
+      // Footer
+      y += 90;
+      doc.fillColor(secondaryColor).fontSize(8.5).font("Helvetica-Oblique").text("This is an official computer-generated salary slip and does not require a physical signature.", 40, y);
+
+      y += 40;
+      doc.strokeColor("#cbd5e1").lineWidth(1).moveTo(380, y).lineTo(535, y).stroke();
+      doc.fillColor(darkColor).fontSize(9).font("Helvetica-Bold").text("Authorized Accounts Seal", 380, y + 5, { width: 155, align: "center" });
+
+      doc.end();
+    });
   }
 }

@@ -1,6 +1,7 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import PDFDocument from "pdfkit";
 import { Fee } from "../../entities/fee.entity.js";
 import { SchoolClassFeeStructure } from "../../entities/class-fee-structure.entity.js";
 import { Student } from "../../entities/student.entity.js";
@@ -311,5 +312,80 @@ export class FeeService {
       count: createdCount,
       message: `Successfully generated ${createdCount} fee invoices for ${students.length} students.`,
     };
+  }
+
+  async generateFeeReceiptPdf(feeId: number): Promise<Buffer> {
+    const fee = await this.getFullFeeRecord(feeId);
+    if (!fee) throw new NotFoundException("Fee record not found");
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 40, size: "A4" });
+      const buffers: Buffer[] = [];
+
+      doc.on("data", (chunk) => buffers.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(buffers)));
+      doc.on("error", (err) => reject(err));
+
+      const primaryColor = "#047857";
+      const secondaryColor = "#475569";
+      const darkColor = "#0f172a";
+
+      // Header / Branding
+      doc.rect(40, 40, 515, 60).fill(primaryColor);
+      doc.fillColor("#ffffff").fontSize(20).font("Helvetica-Bold").text("SCHOOL MANAGEMENT SYSTEM", 55, 52);
+      doc.fontSize(11).font("Helvetica").text("OFFICIAL FEE PAYMENT RECEIPT", 55, 76);
+
+      // Receipt Ref & Status
+      doc.fillColor(darkColor).fontSize(10).font("Helvetica-Bold").text(`Receipt No: #REC-${fee.id}`, 400, 52, { align: "right" });
+      doc.fontSize(9).font("Helvetica").text(`Due Date: ${fee.dueDate ? new Date(fee.dueDate).toLocaleDateString() : "N/A"}`, 400, 68, { align: "right" });
+      doc.text(`Status: ${(fee.status || "pending").toUpperCase()}`, 400, 82, { align: "right" });
+
+      // Student Info Box
+      let y = 120;
+      doc.rect(40, y, 515, 75).fillAndStroke("#f0fdf4", "#bbf7d0");
+
+      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("STUDENT INFORMATION", 55, y + 10);
+      doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text("Student Name:", 55, y + 30);
+      doc.font("Helvetica").text(fee.studentName || "N/A", 140, y + 30);
+      doc.font("Helvetica-Bold").text("Class & Division:", 55, y + 48);
+      doc.font("Helvetica").text(fee.class || "N/A", 140, y + 48);
+
+      doc.font("Helvetica-Bold").text("Roll / Student ID:", 330, y + 30);
+      doc.font("Helvetica").text(fee.rollNumber || fee.studentId || "N/A", 430, y + 30);
+      doc.font("Helvetica-Bold").text("Payment Date:", 330, y + 48);
+      doc.font("Helvetica").text(fee.paidDate ? new Date(fee.paidDate).toLocaleDateString() : "Pending Payment", 430, y + 48);
+
+      // Fee Breakdown Table
+      y = 215;
+      doc.rect(40, y, 515, 25).fill(primaryColor);
+      doc.fillColor("#ffffff").fontSize(10).font("Helvetica-Bold");
+      doc.text("FEE TYPE / HEAD", 55, y + 7);
+      doc.text("REMARKS / NOTE", 230, y + 7);
+      doc.text("AMOUNT (₹)", 440, y + 7, { width: 100, align: "right" });
+
+      y = 240;
+      doc.rect(40, y, 515, 30).fillAndStroke("#ffffff", "#f1f5f9");
+      doc.fillColor(darkColor).fontSize(9.5).font("Helvetica-Bold").text((fee.type || fee.feeType || "Tuition Fee").toUpperCase(), 55, y + 9);
+      doc.font("Helvetica").fontSize(9).text(fee.remarks || "Standard Academic Fee Invoice", 230, y + 9, { width: 200 });
+      doc.font("Helvetica-Bold").text(`₹${Number(fee.amount || 0).toLocaleString()}`, 440, y + 9, { width: 100, align: "right" });
+
+      // Total Box
+      y += 45;
+      doc.rect(40, y, 515, 45).fillAndStroke("#f8fafc", "#cbd5e1");
+      doc.fillColor(primaryColor).fontSize(11).font("Helvetica-Bold").text("TOTAL AMOUNT PAID / DUE:", 55, y + 15);
+      doc.fillColor(fee.status === "paid" ? "#16a34a" : "#d97706")
+        .fontSize(15).font("Helvetica-Bold")
+        .text(`₹${Number(fee.amount || 0).toLocaleString()}`, 410, y + 13, { width: 130, align: "right" });
+
+      // Footer
+      y += 75;
+      doc.fillColor(secondaryColor).fontSize(8.5).font("Helvetica-Oblique").text("Thank you for your fee payment. Official computer generated fee receipt.", 40, y);
+
+      y += 40;
+      doc.strokeColor("#cbd5e1").lineWidth(1).moveTo(380, y).lineTo(535, y).stroke();
+      doc.fillColor(darkColor).fontSize(9).font("Helvetica-Bold").text("Authorized Cashier / Principal", 380, y + 5, { width: 155, align: "center" });
+
+      doc.end();
+    });
   }
 }

@@ -8,11 +8,12 @@ import {
   Query,
   Body,
   NotFoundException,
+  Res,
+  Headers,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { SalaryService } from "./salary.service.js";
 import { toIntID } from "../../db/index.js";
-
-import { Headers } from "@nestjs/common";
 
 @Controller(["api/salaries", "api/:schoolId/salaries"])
 export class SalaryController {
@@ -144,5 +145,17 @@ export class SalaryController {
   ) {
     const schoolId = toIntID(String(schoolIdStr));
     return this.salaryService.generateMonthlyPayroll(schoolId, Number(body.month), Number(body.year));
+  }
+
+  @Get(":id/download-pdf")
+  async downloadSalarySlipPdf(@Param("id") idStr: string, @Res() res: Response) {
+    const recordId = toIntID(idStr);
+    const pdfBuffer = await this.salaryService.generateSalarySlipPdf(recordId);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="salary-slip-${recordId}.pdf"`,
+      "Content-Length": pdfBuffer.length.toString(),
+    });
+    res.end(pdfBuffer);
   }
 }
