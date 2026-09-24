@@ -6,6 +6,40 @@ import { SalaryStructure } from "../../entities/salary-structure.entity.js";
 import { User } from "../../entities/user.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function parseMonthToInt(monthInput: any): number {
+  if (typeof monthInput === "number" && !isNaN(monthInput)) {
+    if (monthInput >= 1 && monthInput <= 12) return monthInput;
+  }
+  if (monthInput !== null && monthInput !== undefined) {
+    const s = String(monthInput).trim();
+    if (/^\d+$/.test(s)) {
+      const num = parseInt(s, 10);
+      if (num >= 1 && num <= 12) return num;
+    }
+    const idx = MONTH_NAMES.findIndex(
+      (m) => m.toLowerCase() === s.toLowerCase() || m.slice(0, 3).toLowerCase() === s.toLowerCase()
+    );
+    if (idx !== -1) return idx + 1;
+  }
+  return new Date().getMonth() + 1;
+}
+
+function formatMonth(monthVal: any): string {
+  if (typeof monthVal === "number" && monthVal >= 1 && monthVal <= 12) {
+    return MONTH_NAMES[monthVal - 1];
+  }
+  if (typeof monthVal === "string" && monthVal.trim()) {
+    const parsed = parseMonthToInt(monthVal);
+    return MONTH_NAMES[parsed - 1];
+  }
+  return MONTH_NAMES[new Date().getMonth()];
+}
+
 @Injectable()
 export class SalaryService {
   constructor(
@@ -22,8 +56,10 @@ export class SalaryService {
       id: String(sr.id),
       teacherId: String(sr.teacher_id),
       teacherName: sr.teacher ? sr.teacher.name : "",
+      teacherEmail: sr.teacher ? sr.teacher.email : "",
+      teacherPhone: sr.teacher ? sr.teacher.phone : "",
       designation: "Faculty Member",
-      month: sr.month,
+      month: formatMonth(sr.month),
       year: sr.year,
       baseSalary: Number(sr.basic_salary),
       allowances: Number(sr.other_allowances),
@@ -142,7 +178,7 @@ export class SalaryService {
       school_id: schoolId,
       school_academic_year_id: sayId || undefined,
       teacher_id: teacherId,
-      month: Number(month || new Date().getMonth() + 1),
+      month: parseMonthToInt(month),
       year: Number(year || new Date().getFullYear()),
       basic_salary: dbBaseSalary,
       other_allowances: dbAllowances,
@@ -177,7 +213,7 @@ export class SalaryService {
       gross_salary: grossSalary,
       total_deductions: dbDeductions,
       net_salary: netSalary,
-      month: Number(month || new Date().getMonth() + 1),
+      month: parseMonthToInt(month),
       year: Number(year || new Date().getFullYear()),
       status: dbStatus,
       paid_at: paidDate ? new Date(paidDate) : null,
@@ -211,6 +247,7 @@ export class SalaryService {
       teacherId: String(ss.teacher_id),
       teacherName: ss.teacher ? ss.teacher.name : "",
       email: ss.teacher ? ss.teacher.email : "",
+      phone: ss.teacher ? ss.teacher.phone : "",
       basicSalary: Number(ss.basic_salary),
       hra: Number(ss.hra),
       da: Number(ss.da),

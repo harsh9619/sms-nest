@@ -137,10 +137,11 @@ export class FeeController {
   @Post("generate-invoices")
   async generateInvoices(
     @Param("schoolId") schoolIdStr: string,
-    @Body() body: { classMasterId: string | number; dueDate?: string }
+    @Body() body: { classMasterId: string | number; dueDate?: string },
+    @Headers("academicyearid") academicYearHeader?: string,
   ) {
     const schoolId = toIntID(String(schoolIdStr));
     const classMasterId = toIntID(String(body.classMasterId));
-    return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate);
+    return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate, academicYearHeader);
   }
 }

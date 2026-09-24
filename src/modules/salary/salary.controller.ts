@@ -51,9 +51,10 @@ export class SalaryController {
     @Param("schoolId") schoolIdStr: string,
     @Body() body: any
   ) {
-    const schoolId = toIntID(String(schoolIdStr));
+    const rawSchoolId = schoolIdStr || body.schoolId || "1";
+    const schoolId = toIntID(String(rawSchoolId));
     const { teacherId, baseSalary, allowances, deductions, month, year, status, paidDate } = body;
-    const dbTeacherId = toIntID(String(teacherId));
+    const dbTeacherId = toIntID(String(teacherId || body.teacherId || "1"));
 
     const newRecordId = await this.salaryService.createSalary(schoolId, {
       teacherId: dbTeacherId,

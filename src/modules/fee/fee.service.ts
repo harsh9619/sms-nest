@@ -260,7 +260,11 @@ export class FeeService {
     await this.classFeeStructRepo.delete(id);
   }
 
-  async generateInvoicesFromClassStructure(schoolId: number, classMasterId: number, dueDate?: string) {
+  async generateInvoicesFromClassStructure(schoolId: number, classMasterId: number, dueDate?: string, academicYearHeader?: string) {
+    let sayId: number | null = null;
+    if (schoolId) {
+      sayId = await this.ayService.getSchoolAcademicYearId(schoolId);
+    }
     const structures = await this.classFeeStructRepo.find({
       where: { school_id: schoolId, class_master_id: classMasterId },
     });
@@ -290,6 +294,7 @@ export class FeeService {
       for (const struct of structures) {
         const newFee = this.feeRepo.create({
           school_id: schoolId,
+          school_academic_year_id: sayId,
           student_id: student.id,
           amount: struct.amount,
           fee_type: struct.fee_type,
