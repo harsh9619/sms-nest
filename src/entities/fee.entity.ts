@@ -10,6 +10,7 @@ import {
 import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { Student } from "./student.entity.js";
+import { FeeReceipt } from "./fee-receipt.entity.js";
 
 @Entity("fees")
 export class Fee {
@@ -36,6 +37,16 @@ export class Fee {
   @ManyToOne(() => Student, { onDelete: "CASCADE" })
   @JoinColumn({ name: "student_id" })
   student: Student;
+
+  @Column({ type: "int", nullable: true })
+  receipt_id: number;
+
+  @ManyToOne(() => FeeReceipt, (receipt) => receipt.fees, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "receipt_id" })
+  receipt: FeeReceipt;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  receipt_number: string;
 
   @Column({ type: "numeric", precision: 10, scale: 2 })
   amount: number;

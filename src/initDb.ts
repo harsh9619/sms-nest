@@ -96,6 +96,24 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
 
   await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
   await appQuery(`ALTER TABLE school_class_fee_structures ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
+
+  // Ensure fee_receipts table exists and fees columns exist
+  await appQuery(`
+    CREATE TABLE IF NOT EXISTS fee_receipts (
+      id                      SERIAL PRIMARY KEY,
+      receipt_number          VARCHAR(100)  NOT NULL UNIQUE,
+      school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+      student_id              INT           NOT NULL REFERENCES students(id)             ON DELETE CASCADE,
+      total_amount            NUMERIC(10,2) NOT NULL,
+      payment_method          VARCHAR(50)   NOT NULL DEFAULT 'cash',
+      months_covered          VARCHAR(255),
+      remarks                 TEXT,
+      created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+      updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
+    );
+  `);
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS receipt_id INT REFERENCES fee_receipts(id) ON DELETE SET NULL;`);
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(100);`);
 }
 
 const ROLE_MAP: Record<string, number> = {

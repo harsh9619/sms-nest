@@ -485,6 +485,27 @@ CREATE INDEX IF NOT EXISTS idx_marks_student_id ON marks(student_id);
 CREATE INDEX IF NOT EXISTS idx_marks_subject_master_id ON marks(subject_master_id);
 
 -- =======================
+-- TABLE: fee_receipts
+-- =======================
+
+CREATE TABLE IF NOT EXISTS fee_receipts (
+  id                      SERIAL PRIMARY KEY,
+  receipt_number          VARCHAR(100)  NOT NULL UNIQUE,
+  school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+  student_id              INT           NOT NULL REFERENCES students(id)             ON DELETE CASCADE,
+  total_amount            NUMERIC(10,2) NOT NULL,
+  payment_method          VARCHAR(50)   NOT NULL DEFAULT 'cash',
+  months_covered          VARCHAR(255),
+  remarks                 TEXT,
+  created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_fee_receipts_school_id ON fee_receipts(school_id);
+CREATE INDEX IF NOT EXISTS idx_fee_receipts_student_id ON fee_receipts(student_id);
+CREATE INDEX IF NOT EXISTS idx_fee_receipts_receipt_number ON fee_receipts(receipt_number);
+
+-- =======================
 -- TABLE: fees
 -- =======================
 
@@ -493,6 +514,8 @@ CREATE TABLE IF NOT EXISTS fees (
   school_id               INT        NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT        REFERENCES school_academic_years(id) ON DELETE SET NULL,
   student_id              INT        NOT NULL REFERENCES students(id)             ON DELETE CASCADE,
+  receipt_id              INT        REFERENCES fee_receipts(id) ON DELETE SET NULL,
+  receipt_number          VARCHAR(100),
   amount                  NUMERIC(10,2) NOT NULL,
   fee_type                VARCHAR(50)   NOT NULL DEFAULT 'tuition',
   month                   VARCHAR(50),
@@ -623,7 +646,7 @@ BEGIN
     'schools', 'users', 'academic_years', 'school_academic_years',
     'class_masters', 'subject_masters', 'division_masters', 'caste_masters',
     'school_classes', 'school_class_subjects', 'school_class_teachers', 'school_subject_teachers',
-    'students', 'timetables', 'homework', 'fees', 'school_class_fee_structures',
+    'students', 'timetables', 'homework', 'fee_receipts', 'fees', 'school_class_fee_structures',
     'salary_structures', 'salary_records', 'notices'
   ]
   LOOP

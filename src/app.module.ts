@@ -17,6 +17,7 @@ import { Timetable } from "./entities/timetable.entity.js";
 import { Homework } from "./entities/homework.entity.js";
 import { Mark } from "./entities/mark.entity.js";
 import { Fee } from "./entities/fee.entity.js";
+import { FeeReceipt } from "./entities/fee-receipt.entity.js";
 import { SalaryStructure } from "./entities/salary-structure.entity.js";
 import { SalaryRecord } from "./entities/salary-record.entity.js";
 import { Notice } from "./entities/notice.entity.js";
@@ -79,6 +80,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               Homework,
               Mark,
               Fee,
+              FeeReceipt,
               SalaryStructure,
               SalaryRecord,
               Notice,
@@ -123,6 +125,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             Homework,
             Mark,
             Fee,
+            FeeReceipt,
             SalaryStructure,
             SalaryRecord,
             Notice,

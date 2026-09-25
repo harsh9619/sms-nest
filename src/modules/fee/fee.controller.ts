@@ -56,21 +56,14 @@ export class FeeController {
     @Body() body: any
   ) {
     const schoolId = toIntID(String(schoolIdStr));
-    const { studentId, amount, feeType, dueDate, month, paidDate, status, remarks } = body;
-    const dbStudentId = toIntID(String(studentId));
+    const studentId = toIntID(String(body.studentId));
 
-    const newFeeId = await this.feeService.createFee(schoolId, {
-      studentId: dbStudentId,
-      amount,
-      feeType,
-      dueDate,
-      month,
-      paidDate,
-      status,
-      remarks,
+    const result = await this.feeService.createFee(schoolId, {
+      ...body,
+      studentId,
     });
 
-    return this.feeService.getFullFeeRecord(newFeeId);
+    return result;
   }
 
   @Put(":id")
@@ -84,7 +77,7 @@ export class FeeController {
       throw new NotFoundException("Fee record not found");
     }
 
-    const { amount, feeType, remarks, dueDate, month, status, paidDate } = body;
+    const { amount, feeType, remarks, dueDate, month, status, paidDate, paymentMethod } = body;
 
     await this.feeService.updateFee(feeId, {
       amount,
@@ -94,6 +87,7 @@ export class FeeController {
       month,
       status,
       paidDate,
+      paymentMethod,
     });
 
     return this.feeService.getFullFeeRecord(feeId);
@@ -149,6 +143,53 @@ export class FeeController {
     const schoolId = toIntID(String(schoolIdStr));
     const classMasterId = toIntID(String(body.classMasterId));
     return this.feeService.generateInvoicesFromClassStructure(schoolId, classMasterId, body.dueDate, body.month, academicYearHeader);
+  }
+
+  @Post("pay-bundle")
+  async payFeeBundle(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: {
+      studentId: string | number;
+      feeIds: (string | number)[];
+      paymentMethod?: string;
+      paidDate?: string;
+      remarks?: string;
+    }
+  ) {
+    const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : 0;
+    const studentId = toIntID(String(body.studentId));
+    const feeIds = (body.feeIds || []).map((id) => toIntID(String(id)));
+
+    return this.feeService.payFeeBundle(schoolId, {
+      studentId,
+      feeIds,
+      paymentMethod: body.paymentMethod,
+      paidDate: body.paidDate,
+      remarks: body.remarks,
+    });
+  }
+
+  @Get("receipts/:receiptNumber")
+  async getReceiptByNumber(@Param("receiptNumber") receiptNumber: string) {
+    const receipt = await this.feeService.getReceiptByNumber(receiptNumber);
+    if (!receipt) {
+      throw new NotFoundException(`Receipt ${receiptNumber} not found`);
+    }
+    return receipt;
+  }
+
+  @Get("receipts/:receiptNumber/pdf")
+  async downloadReceiptPdfByNumber(
+    @Param("receiptNumber") receiptNumber: string,
+    @Res() res: Response
+  ) {
+    const pdfBuffer = await this.feeService.generateReceiptPdfByNumber(receiptNumber);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="fee-receipt-${receiptNumber}.pdf"`,
+      "Content-Length": pdfBuffer.length.toString(),
+    });
+    res.end(pdfBuffer);
   }
 
   @Get(":id/download-pdf")
