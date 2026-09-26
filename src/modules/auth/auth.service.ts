@@ -4,6 +4,8 @@ import { Repository } from "typeorm";
 import { User } from "../../entities/user.entity.js";
 import * as crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { comparePassword } from "../../common/utils/password.util.js";
+
 
 @Injectable()
 export class AuthService {
@@ -97,7 +99,8 @@ export class AuthService {
       return null;
     }
 
-    if (!this.isValidPassword(password, user.password)) {
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
       return null;
     }
 
@@ -137,19 +140,5 @@ export class AuthService {
     return role;
   }
 
-  private isValidPassword(inputPassword: string, storedPassword: string | null) {
-    if (!storedPassword) {
-      return false;
-    }
 
-    if (storedPassword.startsWith("sha256:")) {
-      return storedPassword === `sha256:${this.sha256(inputPassword)}`;
-    }
-
-    return storedPassword === inputPassword;
-  }
-
-  private sha256(value: string) {
-    return crypto.createHash("sha256").update(value).digest("hex");
-  }
 }

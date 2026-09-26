@@ -5,6 +5,7 @@ import { User, UserRole } from "../../entities/user.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 import { getRoleId } from "../../common/utils/role.util.js";
 import { generateUniqueUsername } from "../../common/utils/username.util.js";
+import { hashPassword, getDefaultHashedPassword } from "../../common/utils/password.util.js";
 import fs from "fs";
 import path from "path";
 
@@ -208,7 +209,7 @@ export class TeacherService {
       role?: string;
     }
   ) {
-    const defaultPassword = "password123";
+    const defaultPassword = await getDefaultHashedPassword();
     const processedAvatar = this.processAvatarUrl(data.avatar_url);
 
     let roleMaster: RoleMaster | null = null;
@@ -343,7 +344,7 @@ export class TeacherService {
     schoolId: number,
     teachers: Array<{ name: string; email: string; phone?: string; roleId?: number | string; role?: string }>
   ) {
-    const defaultPassword = "password123";
+    const defaultPassword = await getDefaultHashedPassword();
     const results = {
       addedCount: 0,
       skippedCount: 0,

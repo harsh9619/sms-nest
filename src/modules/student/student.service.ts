@@ -11,6 +11,7 @@ import { DivisionMaster } from "../../entities/division-master.entity.js";
 import { CasteMaster } from "../../entities/caste-master.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
 import { generateUniqueUsername } from "../../common/utils/username.util.js";
+import { hashPassword, getDefaultHashedPassword } from "../../common/utils/password.util.js";
 
 export interface GetStudentsOptions {
   page?: number;
@@ -299,12 +300,14 @@ export class StudentService {
         role: UserRole.STUDENT,
       });
 
+      const defaultPassword = await getDefaultHashedPassword();
+
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
         name,
         user_name: studentUserName,
         email: studentEmail,
-        password: "password123",
+        password: defaultPassword,
         role_id: getRoleId(UserRole.STUDENT),
         role: UserRole.STUDENT,
         phone: phone || null,
@@ -357,7 +360,7 @@ export class StudentService {
             name: parentName,
             user_name: parentUserName,
             email: parentEmail,
-            password: "password123",
+            password: defaultPassword,
             role_id: getRoleId(UserRole.PARENT),
             role: UserRole.PARENT,
             phone: parentPhone || null,
@@ -529,7 +532,7 @@ export class StudentService {
             name: currentParentName,
             user_name: parentUserName,
             email: parentEmail,
-            password: "password123",
+            password: await getDefaultHashedPassword(),
             role_id: getRoleId(UserRole.PARENT),
             role: UserRole.PARENT,
             phone: currentParentPhone || null,

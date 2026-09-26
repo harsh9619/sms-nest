@@ -5,6 +5,7 @@ import { User } from "../../entities/user.entity.js";
 import { Student } from "../../entities/student.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
 import { generateUniqueUsername } from "../../common/utils/username.util.js";
+import { hashPassword, getDefaultPassword } from "../../common/utils/password.util.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 @Injectable()
@@ -109,12 +110,15 @@ export class UserService {
         role: dbRole,
       });
 
+      const rawPassword = data.password || getDefaultPassword();
+      const hashedPassword = await hashPassword(rawPassword);
+
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
         name,
         user_name: resolvedUserName,
         email: email.toLowerCase(),
-        password: "password123",
+        password: hashedPassword,
         role_id: getRoleId(dbRole),
         role: dbRole,
         phone: phone || null,
