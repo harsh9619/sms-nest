@@ -26,16 +26,36 @@ export class AuthController {
   }
 
   private async handleLogin(body: any) {
-    const { email, password } = body;
+    const { email, phone, identifier, loginType, password } = body;
+    const inputIdentifier = identifier || phone || email;
 
-    if (!email || !password) {
-      throw new BadRequestException("Email and password are required.");
+    if (!inputIdentifier || !password) {
+      throw new BadRequestException("Email or mobile number and password are required.");
     }
 
-    const user = await this.authService.loginUser(String(email), String(password));
+    const strIdentifier = String(inputIdentifier).trim();
+
+    // Check if login is explicitly or implicitly via mobile number
+    const isExplicitMobile = loginType === "mobile" || (!!phone && !email);
+    const isNumericPattern = /^\+?\d[\d\s\-]{7,14}$/.test(strIdentifier) && !strIdentifier.includes("@");
+
+    if (isExplicitMobile || isNumericPattern) {
+      const digitsOnly = strIdentifier.replace(/\D/g, "");
+      if (digitsOnly.length !== 10) {
+        throw new BadRequestException("Mobile number must be exactly 10 digits.");
+      }
+    }
+
+    const user = await this.authService.loginUser({
+      email: email ? String(email) : undefined,
+      phone: phone ? String(phone) : undefined,
+      identifier: strIdentifier,
+      loginType: loginType || (isExplicitMobile || isNumericPattern ? "mobile" : "email"),
+      password: String(password),
+    });
 
     if (!user) {
-      throw new UnauthorizedException("Invalid email or password.");
+      throw new UnauthorizedException("Invalid email/mobile number or password.");
     }
 
     const token = this.authService.generateToken(user);
