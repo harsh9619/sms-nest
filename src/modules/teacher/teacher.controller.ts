@@ -11,19 +11,26 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
+import { UseGuards } from "@nestjs/common";
 import { TeacherService } from "./teacher.service.js";
 import { toIntID } from "../../db/index.js";
+import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
+import { RolesGuard } from "../../common/guards/roles.guard.js";
+import { Roles } from "../../common/decorators/roles.decorator.js";
 
 @Controller("api/:schoolId/teachers")
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TeacherController {
   constructor(private readonly teacherService: TeacherService) {}
 
   @Get("roles")
+  @Roles("admin", "principal")
   async getRoles() {
     return this.teacherService.getRoles();
   }
 
   @Get("export")
+  @Roles("admin", "principal")
   async exportTeachers(
     @Param("schoolId") schoolIdStr: string,
     @Query("search") search?: string,
@@ -35,6 +42,7 @@ export class TeacherController {
   }
 
   @Get()
+  @Roles("admin", "principal")
   async getTeachers(
     @Param("schoolId") schoolIdStr: string,
     @Query("page") pageStr?: string,
@@ -56,6 +64,7 @@ export class TeacherController {
   }
 
   @Post()
+  @Roles("admin")
   async createTeacher(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: any
@@ -91,6 +100,7 @@ export class TeacherController {
   }
 
   @Put(":id")
+  @Roles("admin")
   async updateTeacher(
     @Param("schoolId") schoolIdStr: string,
     @Param("id") idStr: string,
@@ -132,6 +142,7 @@ export class TeacherController {
   }
 
   @Delete(":id")
+  @Roles("admin")
   async deleteTeacher(
     @Param("id") idStr: string
   ) {
@@ -145,6 +156,7 @@ export class TeacherController {
   }
 
   @Post("bulk")
+  @Roles("admin")
   async bulkCreateTeachers(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: { teachers: any[] }

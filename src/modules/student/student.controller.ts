@@ -11,14 +11,20 @@ import {
   NotFoundException,
   Headers
 } from "@nestjs/common";
+import { UseGuards } from "@nestjs/common";
 import { StudentService } from "./student.service.js";
 import { toIntID } from "../../db/index.js";
+import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
+import { RolesGuard } from "../../common/guards/roles.guard.js";
+import { Roles } from "../../common/decorators/roles.decorator.js";
 
 @Controller("api/:schoolId/students")
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class StudentController {
   constructor(private readonly studentService: StudentService) { }
 
   @Get("export")
+  @Roles("admin", "teacher", "principal")
   async exportStudents(
     @Param("schoolId") schoolIdStr: string,
     @Query("search") search?: string,
@@ -38,6 +44,7 @@ export class StudentController {
   }
 
   @Get()
+  @Roles("admin", "teacher", "principal")
   async getStudents(
     @Param("schoolId") schoolIdStr: string,
     @Query("page") pageStr?: string,
@@ -63,6 +70,7 @@ export class StudentController {
   }
 
   @Post()
+  @Roles("admin", "principal")
   async createStudent(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: any,
@@ -178,6 +186,7 @@ export class StudentController {
   }
 
   @Put(":id")
+  @Roles("admin", "principal")
   async updateStudent(
     @Param("id") idStr: string,
     @Body() body: any,
@@ -341,6 +350,7 @@ export class StudentController {
   }
 
   @Delete(":id")
+  @Roles("admin", "principal")
   async deleteStudent(@Param("id") idStr: string) {
     const studentId = toIntID(idStr);
     const existing = await this.studentService.getStudentById(studentId);
@@ -352,6 +362,7 @@ export class StudentController {
   }
 
   @Post("bulk")
+  @Roles("admin", "principal")
   async bulkCreateStudents(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: { students: any[] },

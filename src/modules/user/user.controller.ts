@@ -16,13 +16,16 @@ import {
 import { UserService } from "./user.service.js";
 import { toIntID } from "../../db/index.js";
 import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
+import { RolesGuard } from "../../common/guards/roles.guard.js";
+import { Roles } from "../../common/decorators/roles.decorator.js";
 
 @Controller(["api/:schoolId/users", "api/users"])
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @Roles("admin", "principal")
   async getUsers(
     @Req() req: any,
     @Param("schoolId") paramSchoolId?: string,
@@ -37,6 +40,7 @@ export class UserController {
   }
 
   @Post()
+  @Roles("admin")
   async createUser(
     @Param("schoolId") schoolIdStr: string,
     @Body() body: any
@@ -79,6 +83,7 @@ export class UserController {
   }
 
   @Put(":id")
+  @Roles("admin")
   async updateUser(
     @Param("schoolId") schoolIdStr: string,
     @Param("id") idStr: string,
@@ -128,6 +133,7 @@ export class UserController {
   }
 
   @Delete(":id")
+  @Roles("admin")
   async deleteUser(@Param("id") idStr: string) {
     const userId = toIntID(idStr);
     const existing = await this.userService.getFullUserRecord(userId);

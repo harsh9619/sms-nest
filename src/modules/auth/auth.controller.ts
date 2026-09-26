@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
 import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
+import { getPermissionsForRole } from "../../common/utils/access-control.util.js";
 
 @Controller("auth")
 export class AuthController {
@@ -69,5 +70,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: any) {
     return { user: req.user };
+  }
+
+  @Get("permissions")
+  @UseGuards(JwtAuthGuard)
+  getPermissions(@Req() req: any) {
+    const userRole = req.user?.role || "student";
+    const permissions = getPermissionsForRole(userRole);
+    return { role: userRole, permissions };
   }
 }
