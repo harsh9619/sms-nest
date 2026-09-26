@@ -18,21 +18,25 @@ export class AuthService {
       | {
           email?: string;
           phone?: string;
+          userName?: string;
+          user_name?: string;
           identifier?: string;
-          loginType?: "email" | "mobile";
+          loginType?: "email" | "mobile" | "username";
           password: string;
         },
     passwordParam?: string
   ) {
     let email: string | undefined;
     let phone: string | undefined;
+    let userName: string | undefined;
     let identifier: string | undefined;
-    let loginType: "email" | "mobile" | undefined;
+    let loginType: "email" | "mobile" | "username" | undefined;
     let password = "";
 
     if (typeof emailOrParams === "object") {
       email = emailOrParams.email;
       phone = emailOrParams.phone;
+      userName = emailOrParams.userName || emailOrParams.user_name;
       identifier = emailOrParams.identifier;
       loginType = emailOrParams.loginType;
       password = emailOrParams.password;
@@ -48,14 +52,21 @@ export class AuthService {
           phone = cleaned;
           loginType = "mobile";
         } else {
-          email = emailOrParams;
+          userName = emailOrParams;
+          loginType = "username";
         }
       }
     }
 
     let user: User | null = null;
 
-    if (loginType === "mobile" || phone) {
+    if (loginType === "username" || userName) {
+      const targetName = (userName || identifier || "").trim().toLowerCase();
+      user = await this.userRepository
+        .createQueryBuilder("user")
+        .where("LOWER(user.user_name) = :uname", { uname: targetName })
+        .getOne();
+    } else if (loginType === "mobile" || phone) {
       const targetPhone = (phone || identifier || "").replace(/\D/g, "");
       user = await this.userRepository
         .createQueryBuilder("user")
@@ -69,14 +80,15 @@ export class AuthService {
       });
     }
 
-    // Fallback: search both email and phone if no match yet
+    // Fallback: search email, user_name, and phone if no match yet
     if (!user && identifier) {
-      const cleanId = identifier.trim();
+      const cleanId = identifier.trim().toLowerCase();
       const digits = cleanId.replace(/\D/g, "");
       user = await this.userRepository
         .createQueryBuilder("user")
-        .where("LOWER(user.email) = :email", { email: cleanId.toLowerCase() })
-        .orWhere("user.phone = :rawPhone", { rawPhone: cleanId })
+        .where("LOWER(user.email) = :cleanId", { cleanId })
+        .orWhere("LOWER(user.user_name) = :cleanId", { cleanId })
+        .orWhere("user.phone = :rawPhone", { rawPhone: identifier.trim() })
         .orWhere("REPLACE(REPLACE(REPLACE(user.phone, ' ', ''), '-', ''), '+91', '') = :digits", { digits })
         .getOne();
     }
@@ -93,6 +105,8 @@ export class AuthService {
       id: user.id,
       schoolId: user.school_id,
       name: user.name,
+      user_name: user.user_name,
+      userName: user.user_name,
       email: user.email,
       role: this.normalizeRole(user.role),
       phone: user.phone,

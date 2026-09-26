@@ -4,6 +4,7 @@ import { Repository, DataSource } from "typeorm";
 import { User } from "../../entities/user.entity.js";
 import { Student } from "../../entities/student.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
+import { generateUniqueUsername } from "../../common/utils/username.util.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 @Injectable()
@@ -53,6 +54,8 @@ export class UserService {
     return users.map((u) => ({
       id: String(u.id),
       name: u.name,
+      user_name: u.user_name,
+      userName: u.user_name,
       email: u.email,
       phone: u.phone,
       role: u.role === "school_admin" || u.role === "super_admin" ? "admin" : u.role,
@@ -79,6 +82,8 @@ export class UserService {
     return {
       id: String(user.id),
       name: user.name,
+      user_name: user.user_name,
+      userName: user.user_name,
       email: user.email,
       phone: user.phone,
       role: user.role === "school_admin" || user.role === "super_admin" ? "admin" : user.role,
@@ -90,16 +95,24 @@ export class UserService {
   }
 
   async createUser(data: any) {
-    const { name, email, phone, dbRole, schoolId } = data;
+    const { name, user_name, userName, email, phone, dbRole, schoolId } = data;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const resolvedUserName = await generateUniqueUsername(queryRunner.manager, {
+        explicitUsername: user_name || userName,
+        email,
+        name,
+        role: dbRole,
+      });
+
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
         name,
+        user_name: resolvedUserName,
         email: email.toLowerCase(),
         password: "password123",
         role_id: getRoleId(dbRole),
@@ -130,15 +143,24 @@ export class UserService {
   }
 
   async updateUser(userId: number, data: any) {
-    const { name, email, phone, dbRole, schoolId } = data;
+    const { name, user_name, userName, email, phone, dbRole, schoolId } = data;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const resolvedUserName = await generateUniqueUsername(queryRunner.manager, {
+        explicitUsername: user_name || userName,
+        email,
+        name,
+        role: dbRole,
+        excludeUserId: userId,
+      });
+
       await queryRunner.manager.update(User, userId, {
         name,
+        user_name: resolvedUserName,
         email: email.toLowerCase(),
         phone: phone || null,
         role_id: getRoleId(dbRole),

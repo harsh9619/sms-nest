@@ -26,22 +26,24 @@ export class AuthController {
   }
 
   private async handleLogin(body: any) {
-    const { email, phone, identifier, loginType, password } = body;
-    const inputIdentifier = identifier || phone || email;
+    const { email, phone, user_name, username, identifier, loginType, password } = body;
+    const inputIdentifier = identifier || username || user_name || phone || email;
 
     if (!inputIdentifier || !password) {
-      throw new BadRequestException("Email or mobile number and password are required.");
+      throw new BadRequestException("Username, email, or mobile number and password are required.");
     }
 
     const strIdentifier = String(inputIdentifier).trim();
 
     // Check if login is explicitly or implicitly via mobile number
-    const isExplicitMobile = loginType === "mobile" || (!!phone && !email);
+    const isExplicitMobile = loginType === "mobile" || (!!phone && !email && !username && !user_name);
     const isNumericPattern = /^\+?\d[\d\s\-]{7,14}$/.test(strIdentifier) && !strIdentifier.includes("@");
 
     if (isExplicitMobile || isNumericPattern) {
       const digitsOnly = strIdentifier.replace(/\D/g, "");
-      if (digitsOnly.length !== 10) {
+      if (digitsOnly.length === 10) {
+        // Valid 10-digit phone number
+      } else if (loginType === "mobile") {
         throw new BadRequestException("Mobile number must be exactly 10 digits.");
       }
     }
@@ -49,13 +51,14 @@ export class AuthController {
     const user = await this.authService.loginUser({
       email: email ? String(email) : undefined,
       phone: phone ? String(phone) : undefined,
+      userName: (username || user_name) ? String(username || user_name) : undefined,
       identifier: strIdentifier,
       loginType: loginType || (isExplicitMobile || isNumericPattern ? "mobile" : "email"),
       password: String(password),
     });
 
     if (!user) {
-      throw new UnauthorizedException("Invalid email/mobile number or password.");
+      throw new UnauthorizedException("Invalid username, email/mobile number or password.");
     }
 
     const token = this.authService.generateToken(user);

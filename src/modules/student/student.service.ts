@@ -10,6 +10,7 @@ import { ClassMaster } from "../../entities/class-master.entity.js";
 import { DivisionMaster } from "../../entities/division-master.entity.js";
 import { CasteMaster } from "../../entities/caste-master.entity.js";
 import { getRoleId } from "../../common/utils/role.util.js";
+import { generateUniqueUsername } from "../../common/utils/username.util.js";
 
 export interface GetStudentsOptions {
   page?: number;
@@ -291,9 +292,17 @@ export class StudentService {
         studentEmail = cleanEmail;
       }
 
+      const studentUserName = await generateUniqueUsername(queryRunner.manager, {
+        explicitUsername: data.user_name || data.userName,
+        email: studentEmail,
+        name,
+        role: UserRole.STUDENT,
+      });
+
       const newUser = queryRunner.manager.create(User, {
         school_id: schoolId,
         name,
+        user_name: studentUserName,
         email: studentEmail,
         password: "password123",
         role_id: getRoleId(UserRole.STUDENT),
@@ -336,9 +345,17 @@ export class StudentService {
           const safePhone = parentPhone ? parentPhone.replace(/[^0-9]/g, "") : "";
           const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : '');
 
+          const parentUserName = await generateUniqueUsername(queryRunner.manager, {
+            explicitUsername: data.parentUserName || data.parent_user_name,
+            email: parentEmail,
+            name: parentName,
+            role: UserRole.PARENT,
+          });
+
           const newParentUser = queryRunner.manager.create(User, {
             school_id: schoolId,
             name: parentName,
+            user_name: parentUserName,
             email: parentEmail,
             password: "password123",
             role_id: getRoleId(UserRole.PARENT),
@@ -500,9 +517,17 @@ export class StudentService {
           const safePhone = currentParentPhone ? currentParentPhone.replace(/[^0-9]/g, "") : "";
           const parentEmail = rawParentEmail ? String(rawParentEmail).toLowerCase() : (email ? email.toLowerCase() : "");
 
+          const parentUserName = await generateUniqueUsername(queryRunner.manager, {
+            explicitUsername: data.parentUserName || data.parent_user_name,
+            email: parentEmail,
+            name: currentParentName,
+            role: UserRole.PARENT,
+          });
+
           const newParentUser = queryRunner.manager.create(User, {
             school_id: studentUser?.school_id || undefined,
             name: currentParentName,
+            user_name: parentUserName,
             email: parentEmail,
             password: "password123",
             role_id: getRoleId(UserRole.PARENT),

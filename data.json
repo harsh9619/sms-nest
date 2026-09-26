@@ -36,6 +36,7 @@
     {
       "id": "admin-1",
       "name": "Dr. Rajesh Kumar",
+      "user_name": "admin",
       "email": "admin@school.com",
       "role": "admin",
       "phone": "+91 98765 43210",
@@ -50,6 +51,7 @@
     {
       "id": "teacher-1",
       "name": "Priya Sharma",
+      "user_name": "teacher",
       "email": "teacher@school.com",
       "role": "teacher",
       "phone": "+91 98765 43211",
@@ -64,6 +66,7 @@
     {
       "id": "teacher-2",
       "name": "Amit Patel",
+      "user_name": "amit",
       "email": "amit@school.com",
       "role": "teacher",
       "phone": "+91 98765 43212",
@@ -78,6 +81,7 @@
     {
       "id": "student-1",
       "name": "Arjun Singh",
+      "user_name": "student",
       "email": "student@school.com",
       "role": "student",
       "phone": "+91 98765 43213",
@@ -95,6 +99,7 @@
     {
       "id": "student-2",
       "name": "Sneha Patel",
+      "user_name": "sneha",
       "email": "sneha@school.com",
       "role": "student",
       "phone": "+91 98765 43215",
@@ -112,6 +117,7 @@
     {
       "id": "teacher-3",
       "name": "Vikram Malhotra",
+      "user_name": "teacher3",
       "email": "teacher3@school.com",
       "role": "teacher",
       "phone": "+91 98765 43217",
@@ -126,6 +132,7 @@
     {
       "id": "student-3",
       "name": "Rohan Das",
+      "user_name": "student3",
       "email": "student3@school.com",
       "role": "student",
       "phone": "+91 98765 43218",

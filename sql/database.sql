@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS users (
   id           SERIAL PRIMARY KEY,
   school_id    INT           REFERENCES schools(id) ON DELETE SET NULL,
   name         VARCHAR(150)  NOT NULL,
+  user_name    VARCHAR(150)  UNIQUE,
   email        VARCHAR(150)  NOT NULL,
   password     VARCHAR(255)  NOT NULL,
   role_id      INT           REFERENCES role_masters(id) ON DELETE SET NULL,
@@ -162,6 +163,7 @@ CREATE INDEX IF NOT EXISTS idx_users_school_id ON users(school_id);
 CREATE INDEX IF NOT EXISTS idx_users_role_id   ON users(role_id);
 CREATE INDEX IF NOT EXISTS idx_users_role      ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_email     ON users(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_user_name ON users(user_name);
 
 -- ===================================
 -- TABLE: academic_years  (global master)

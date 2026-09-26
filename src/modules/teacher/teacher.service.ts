@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { User, UserRole } from "../../entities/user.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 import { getRoleId } from "../../common/utils/role.util.js";
+import { generateUniqueUsername } from "../../common/utils/username.util.js";
 import fs from "fs";
 import path from "path";
 
@@ -240,9 +241,17 @@ export class TeacherService {
 
     const computedRoleId = roleMaster ? roleMaster.id : (data.roleId ? Number(data.roleId) : getRoleId(userRoleStr));
 
+    const resolvedUserName = await generateUniqueUsername(this.userRepo, {
+      explicitUsername: (data as any).user_name || (data as any).userName,
+      email: data.email,
+      name: data.name,
+      role: userRoleStr,
+    });
+
     const user = this.userRepo.create({
       school_id: schoolId,
       name: data.name,
+      user_name: resolvedUserName,
       email: data.email.trim(),
       password: defaultPassword,
       role_id: computedRoleId,
@@ -399,9 +408,17 @@ export class TeacherService {
 
         const computedRoleId = matchedRole ? matchedRole.id : (t.roleId ? Number(t.roleId) : getRoleId(userRoleStr));
 
+        const resolvedUserName = await generateUniqueUsername(this.userRepo, {
+          explicitUsername: (t as any).user_name || (t as any).userName,
+          email,
+          name: t.name,
+          role: userRoleStr,
+        });
+
         const user = this.userRepo.create({
           school_id: schoolId,
           name: t.name.trim(),
+          user_name: resolvedUserName,
           email,
           password: defaultPassword,
           role_id: computedRoleId,

@@ -52,41 +52,41 @@ ON CONFLICT (school_id, academic_year_id) DO NOTHING;
 -- Super admins, school admins, teachers, students
 -- =======================
 
-INSERT INTO users (id, school_id, name, email, password, role, phone, is_active)
+INSERT INTO users (id, school_id, name, user_name, email, password, role, phone, is_active)
 OVERRIDING SYSTEM VALUE VALUES
   -- Super Admin
-  (1,  NULL, 'Super Admin',      'superadmin@sms.com',          'admin123', 'super_admin',  '9000000000', TRUE),
+  (1,  NULL, 'Super Admin',      'superadmin',     'superadmin@sms.com',          'admin123', 'super_admin',  '9000000000', TRUE),
 
   -- School Admins
-  (2,  1,    'Rajesh Sharma',    'admin@greenwood.edu.in',       'admin123', 'school_admin', '9876543210', TRUE),
-  (3,  2,    'Priya Patel',      'admin@sunrise.edu.in',         'admin123', 'school_admin', '9123456780', TRUE),
+  (2,  1,    'Rajesh Sharma',    'admin',          'admin@greenwood.edu.in',       'admin123', 'school_admin', '9876543210', TRUE),
+  (3,  2,    'Priya Patel',      'admin_sunrise',  'admin@sunrise.edu.in',         'admin123', 'school_admin', '9123456780', TRUE),
 
   -- Teachers — Greenwood (school 1)
-  (10, 1,    'Anita Verma',      'anita.verma@greenwood.edu.in', 'admin123', 'teacher',      '9800000001', TRUE),
-  (11, 1,    'Rohit Kumar',      'rohit.kumar@greenwood.edu.in', 'admin123', 'teacher',      '9800000002', TRUE),
-  (12, 1,    'Sunita Rao',       'sunita.rao@greenwood.edu.in',  'admin123', 'teacher',      '9800000003', TRUE),
-  (13, 1,    'Vikram Singh',     'vikram.singh@greenwood.edu.in','admin123', 'teacher',      '9800000004', TRUE),
+  (10, 1,    'Anita Verma',      'teacher',        'anita.verma@greenwood.edu.in', 'admin123', 'teacher',      '9800000001', TRUE),
+  (11, 1,    'Rohit Kumar',      'rohit',          'rohit.kumar@greenwood.edu.in', 'admin123', 'teacher',      '9800000002', TRUE),
+  (12, 1,    'Sunita Rao',       'sunita',         'sunita.rao@greenwood.edu.in',  'admin123', 'teacher',      '9800000003', TRUE),
+  (13, 1,    'Vikram Singh',     'vikram',         'vikram.singh@greenwood.edu.in','admin123', 'teacher',      '9800000004', TRUE),
 
   -- Teachers — Sunrise (school 2)
-  (20, 2,    'Meena Joshi',      'meena.joshi@sunrise.edu.in',   'admin123', 'teacher',      '9700000001', TRUE),
-  (21, 2,    'Arjun Nair',       'arjun.nair@sunrise.edu.in',    'admin123', 'teacher',      '9700000002', TRUE),
+  (20, 2,    'Meena Joshi',      'meena',          'meena.joshi@sunrise.edu.in',   'admin123', 'teacher',      '9700000001', TRUE),
+  (21, 2,    'Arjun Nair',       'arjun_nair',     'arjun.nair@sunrise.edu.in',    'admin123', 'teacher',      '9700000002', TRUE),
 
   -- Students — Greenwood user accounts
-  (100, 1,   'Aarav Mehta',      'student_101@greenwood.edu.in', 'admin123', 'student',      '9600000001', TRUE),
-  (101, 1,   'Diya Shah',        'student_102@greenwood.edu.in', 'admin123', 'student',      '9600000002', TRUE),
-  (102, 1,   'Kabir Gupta',      'student_103@greenwood.edu.in', 'admin123', 'student',      '9600000003', TRUE),
-  (103, 1,   'Priya Iyer',       'student_104@greenwood.edu.in', 'admin123', 'student',      '9600000004', TRUE),
-  (104, 1,   'Aryan Joshi',      'student_105@greenwood.edu.in', 'admin123', 'student',      '9600000005', TRUE),
-  (105, 1,   'Neha Pillai',      'student_106@greenwood.edu.in', 'admin123', 'student',      '9600000006', TRUE),
-  (106, 1,   'Aarush Sharma',    'student_107@greenwood.edu.in', 'admin123', 'student',      '9600000007', TRUE),
-  (107, 1,   'Ishani Patel',     'student_108@greenwood.edu.in', 'admin123', 'student',      '9600000008', TRUE),
-  (108, 1,   'Vihaan Verma',     'student_109@greenwood.edu.in', 'admin123', 'student',      '9600000009', TRUE),
-  (109, 1,   'Myra Gupta',       'student_110@greenwood.edu.in', 'admin123', 'student',      '9600000010', TRUE),
+  (100, 1,   'Aarav Mehta',      'student',        'student_101@greenwood.edu.in', 'admin123', 'student',      '9600000001', TRUE),
+  (101, 1,   'Diya Shah',        'diya',           'student_102@greenwood.edu.in', 'admin123', 'student',      '9600000002', TRUE),
+  (102, 1,   'Kabir Gupta',      'kabir',          'student_103@greenwood.edu.in', 'admin123', 'student',      '9600000003', TRUE),
+  (103, 1,   'Priya Iyer',       'priya_iyer',     'student_104@greenwood.edu.in', 'admin123', 'student',      '9600000004', TRUE),
+  (104, 1,   'Aryan Joshi',      'aryan',          'student_105@greenwood.edu.in', 'admin123', 'student',      '9600000005', TRUE),
+  (105, 1,   'Neha Pillai',      'neha',           'student_106@greenwood.edu.in', 'admin123', 'student',      '9600000006', TRUE),
+  (106, 1,   'Aarush Sharma',    'aarush',         'student_107@greenwood.edu.in', 'admin123', 'student',      '9600000007', TRUE),
+  (107, 1,   'Ishani Patel',     'ishani',         'student_108@greenwood.edu.in', 'admin123', 'student',      '9600000008', TRUE),
+  (108, 1,   'Vihaan Verma',     'vihaan',         'student_109@greenwood.edu.in', 'admin123', 'student',      '9600000009', TRUE),
+  (109, 1,   'Myra Gupta',       'myra',           'student_110@greenwood.edu.in', 'admin123', 'student',      '9600000010', TRUE),
 
   -- Students — Sunrise user accounts
-  (110, 2,   'Ravi Menon',       'student_201@sunrise.edu.in',   'admin123', 'student',      '9500000001', TRUE),
-  (111, 2,   'Ananya Das',       'student_202@sunrise.edu.in',   'admin123', 'student',      '9500000002', TRUE),
-  (112, 2,   'Siddharth Roy',    'student_203@sunrise.edu.in',   'admin123', 'student',      '9500000003', TRUE)
+  (110, 2,   'Ravi Menon',       'ravi',           'student_201@sunrise.edu.in',   'admin123', 'student',      '9500000001', TRUE),
+  (111, 2,   'Ananya Das',       'ananya',         'student_202@sunrise.edu.in',   'admin123', 'student',      '9500000002', TRUE),
+  (112, 2,   'Siddharth Roy',    'siddharth',      'student_203@sunrise.edu.in',   'admin123', 'student',      '9500000003', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('public.users', 'id'), MAX(id), TRUE) FROM public.users;
