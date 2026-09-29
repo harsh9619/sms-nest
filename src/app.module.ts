@@ -47,6 +47,7 @@ import { NoticeModule } from "./modules/notice/notice.module.js";
 import { MarkModule } from "./modules/mark/mark.module.js";
 import { AcademicYearModule } from "./modules/academic-year/academic-year.module.js";
 import { CasteModule } from "./modules/caste/caste.module.js";
+import { OcrModule } from "./modules/ocr/ocr.module.js";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
 
@@ -164,6 +165,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
     MarkModule,
     AcademicYearModule,
     CasteModule,
+    OcrModule,
   ],
 })
 export class AppModule implements NestModule {
