@@ -58,6 +58,18 @@ export class AcademicYearService {
     return fallback ? fallback.id : null;
   }
 
+  async getMasterAcademicYears() {
+    const list = await this.ayRepo.find({
+      order: { label: "DESC" },
+    });
+    return list.map((item) => ({
+      id: String(item.id),
+      label: item.label,
+      startDate: item.start_date,
+      endDate: item.end_date,
+    }));
+  }
+
   async getAcademicYears(schoolId?: number) {
     const qb = this.sayRepo
       .createQueryBuilder("say")

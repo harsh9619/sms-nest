@@ -12,13 +12,21 @@ import {
 import { AcademicYearService } from "./academic-year.service.js";
 import { toIntID } from "../../db/index.js";
 
-@Controller("api/:schoolId/academic-years")
+@Controller(["api/academic-years", "api/:schoolId/academic-years"])
 export class AcademicYearController {
   constructor(private readonly ayService: AcademicYearService) {}
 
+  @Get("master")
+  async getMasterAcademicYears() {
+    return this.ayService.getMasterAcademicYears();
+  }
+
   @Get()
-  async getAcademicYears(@Param("schoolId") schoolIdStr: string) {
+  async getAcademicYears(@Param("schoolId") schoolIdStr?: string) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : undefined;
+    if (!schoolId) {
+      return this.ayService.getMasterAcademicYears();
+    }
     return this.ayService.getAcademicYears(schoolId);
   }
 
