@@ -48,16 +48,15 @@ export async function generateUniqueUsername(
     baseName = (role || "user").toLowerCase() + "_" + Math.floor(1000 + Math.random() * 9000);
   }
 
+  const repo = "getRepository" in managerOrRepo
+    ? (managerOrRepo as EntityManager).getRepository(User)
+    : (managerOrRepo as Repository<User>);
+
   let candidate = baseName;
   let counter = 1;
 
   while (true) {
-    let qb: any;
-    if ("createQueryBuilder" in managerOrRepo && typeof (managerOrRepo as any).createQueryBuilder === "function") {
-      qb = (managerOrRepo as any).createQueryBuilder(User, "u");
-    } else {
-      qb = (managerOrRepo as Repository<User>).createQueryBuilder("u");
-    }
+    const qb = repo.createQueryBuilder("u");
 
     qb.where("LOWER(u.user_name) = :candidate", { candidate });
     if (excludeUserId) {

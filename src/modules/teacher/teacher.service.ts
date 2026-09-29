@@ -431,6 +431,7 @@ export class TeacherService {
         await this.userRepo.save(user);
         results.addedCount++;
       } catch (err: any) {
+        console.error("BULK TEACHER ERROR STACK:", err.stack || err);
         results.skippedCount++;
         results.errors.push({ email, reason: err.message || "Failed to create teacher" });
       }
