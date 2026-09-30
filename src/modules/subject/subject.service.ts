@@ -167,7 +167,7 @@ export class SubjectService {
         AND sst.subject_master_id = sm.id
        LEFT JOIN users teacher ON teacher.id = sst.teacher_id
        WHERE ${filters.join(" AND ")}
-       ORDER BY sc.name ASC, dm.name ASC, sm.name ASC`,
+       ORDER BY sc.class_master_id ASC, dm.name ASC, sm.name ASC`,
       parameters
     );
 

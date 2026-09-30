@@ -20,6 +20,9 @@ export class RoleMaster {
   @Column({ type: "text", nullable: true })
   description: string;
 
+  @Column({ type: "int", nullable: true, default: 0 })
+  seq: number;
+
   @CreateDateColumn({ type: "timestamptz" })
   created_at: Date;
 

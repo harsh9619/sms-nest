@@ -29,12 +29,13 @@ export class TeacherService {
   ) { }
 
   async getRoles() {
-    const roles = await this.roleMasterRepo.find({ order: { id: "ASC" } });
+    const roles = await this.roleMasterRepo.find({ order: { seq: "ASC", id: "ASC" } });
     return roles.map((r) => ({
       roleId: r.id,
       roleName: r.name,
       label: r.label,
       description: r.description,
+      seq: r.seq ?? 0,
     }));
   }
 

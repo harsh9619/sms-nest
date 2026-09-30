@@ -23,7 +23,8 @@ export class UserService {
     schoolId: number | null,
     showAll: boolean,
     user?: any,
-    academicYearHeader?: string | number
+    academicYearHeader?: string | number,
+    options?: { role?: string; search?: string; page?: number; limit?: number }
   ) {
     let sayId: number | null = null;
     if (schoolId) {
@@ -41,6 +42,23 @@ export class UserService {
       qb.where("u.is_active = :isActive", { isActive: true });
     }
 
+    if (options?.role && options.role !== "all") {
+      const r = options.role.toLowerCase();
+      if (r === "admin") {
+        qb.andWhere("CAST(u.role AS text) IN (:...adminRoles)", { adminRoles: ["admin", "school_admin", "super_admin"] });
+      } else {
+        qb.andWhere("LOWER(CAST(u.role AS text)) = :role", { role: r });
+      }
+    }
+
+    if (options?.search && options.search.trim()) {
+      const q = `%${options.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        "(LOWER(u.name) LIKE :q OR LOWER(u.email) LIKE :q OR LOWER(u.user_name) LIKE :q OR LOWER(u.phone) LIKE :q)",
+        { q }
+      );
+    }
+
     if (sayId) {
       qb.leftJoin(Student, "st", "(st.user_id = u.id OR st.parent_user_id = u.id)")
         .andWhere("(u.role NOT IN (:...scopedRoles) OR st.school_academic_year_id = :sayId)", {
@@ -50,6 +68,11 @@ export class UserService {
     }
 
     qb.orderBy("u.created_at", "DESC");
+
+    if (options?.page && options?.limit) {
+      const skip = (options.page - 1) * options.limit;
+      qb.skip(skip).take(options.limit);
+    }
 
     const users = await qb.getMany();
     return users.map((u) => ({

@@ -30,13 +30,24 @@ export class UserController {
     @Req() req: any,
     @Param("schoolId") paramSchoolId?: string,
     @Query("schoolId") querySchoolId?: string,
+    @Query("role") role?: string,
+    @Query("search") search?: string,
+    @Query("page") pageStr?: string,
+    @Query("limit") limitStr?: string,
     @Query("all") allStr?: string,
     @Headers("academicyearid") academicYearHeader?: string
   ) {
     const rawSchoolId = paramSchoolId || querySchoolId;
     const schoolId = rawSchoolId ? toIntID(String(rawSchoolId)) : null;
     const showAll = allStr === "true";
-    return this.userService.getUsers(schoolId, showAll, req.user, toIntID(academicYearHeader));
+    const page = pageStr ? parseInt(pageStr, 10) : undefined;
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    return this.userService.getUsers(schoolId, showAll, req.user, toIntID(academicYearHeader), {
+      role,
+      search,
+      page,
+      limit,
+    });
   }
 
   @Post()

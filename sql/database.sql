@@ -125,18 +125,20 @@ CREATE TABLE IF NOT EXISTS role_masters (
   name        VARCHAR(50)  NOT NULL UNIQUE,
   label       VARCHAR(100) NOT NULL,
   description TEXT,
+  seq         INT          DEFAULT 0,
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-INSERT INTO role_masters (id, name, label, description) VALUES
-  (1, 'super_admin',  'Super Admin',  'System Super Administrator'),
-  (2, 'school_admin', 'School Admin', 'School Administrator'),
-  (3, 'teacher',      'Teacher',      'Teaching Staff'),
-  (4, 'student',      'Student',      'Enrolled Student'),
-  (5, 'parent',       'Parent',       'Student Guardian / Parent'),
-  (6, 'principal',    'Principal',    'School Principal')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, label = EXCLUDED.label, description = EXCLUDED.description;
+INSERT INTO role_masters (id, name, label, description, seq) VALUES
+  (1, 'super_admin',  'Super Admin',  'System Super Administrator', 1),
+  (2, 'admin',  'Admin',  'System Administrator', 2),
+  (3, 'school_admin', 'School Admin', 'School Administrator',     3),
+  (4, 'principal',    'Principal',    'School Principal',         4),
+  (5, 'teacher',      'Teacher',      'Teaching Staff',           5),
+  (6, 'student',      'Student',      'Enrolled Student',         6),
+  (7, 'parent',       'Parent',       'Student Guardian / Parent', 7)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, label = EXCLUDED.label, description = EXCLUDED.description, seq = EXCLUDED.seq;
 
 -- =======================
 -- TABLE: users
