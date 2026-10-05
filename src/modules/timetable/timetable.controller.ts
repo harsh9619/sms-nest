@@ -14,19 +14,61 @@ import { toIntID } from "../../db/index.js";
 
 @Controller("api/:schoolId/timetables")
 export class TimetableController {
-  constructor(private readonly timetableService: TimetableService) {}
+  constructor(private readonly timetableService: TimetableService) { }
 
   @Get()
   async getTimetables(
     @Param("schoolId") schoolIdStr: string,
     @Query("classId") classIdStr?: string,
-    @Query("teacherId") teacherIdStr?: string
+    @Query("teacherId") teacherIdStr?: string,
+    @Query("divisionId") divisionIdStr?: string,
+    @Query("division") divisionStr?: string,
+    @Query("dayOfWeek") dayOfWeekStr?: string
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : null;
     const classId = classIdStr ? toIntID(String(classIdStr)) : null;
     const teacherId = teacherIdStr ? toIntID(String(teacherIdStr)) : null;
+    const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : null;
+    const division = divisionStr || null;
+    const dayOfWeek = dayOfWeekStr || null;
 
-    return this.timetableService.getTimetables(schoolId, classId, teacherId);
+    return this.timetableService.getTimetables(
+      schoolId,
+      classId,
+      teacherId,
+      divisionId,
+      division,
+      dayOfWeek
+    );
+  }
+
+  @Post("generate")
+  async generateTimetable(
+    @Param("schoolId") schoolIdStr: string,
+    @Body() body: any
+  ) {
+    const schoolId = toIntID(String(schoolIdStr));
+    const {
+      classId,
+      daysOfWeek,
+      startTime,
+      endTime,
+      periodDuration,
+      breakStartTime,
+      breakEndTime,
+      clearExisting,
+    } = body;
+
+    return this.timetableService.generateTimetable(schoolId, {
+      classId: classId ? toIntID(classId) : null,
+      daysOfWeek,
+      startTime,
+      endTime,
+      periodDuration: periodDuration ? Number(periodDuration) : undefined,
+      breakStartTime,
+      breakEndTime,
+      clearExisting: clearExisting !== undefined ? Boolean(clearExisting) : true,
+    });
   }
 
   @Post()

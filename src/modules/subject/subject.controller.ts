@@ -45,7 +45,7 @@ export class SubjectController {
   async getSchoolSubjectTeachers(
     @Param("schoolId") schoolIdStr: string,
     @Query("classId") classIdStr?: string,
-    @Query("academicYearId") academicYearIdStr?: string,
+    @Query("status") statusStr?: string,
     @Query("schoolAcademicYearId") schoolAcademicYearIdStr?: string,
     @Headers("academicyearid") academicYearHeader?: string
   ) {
@@ -54,7 +54,8 @@ export class SubjectController {
     return this.subjectService.getSchoolSubjectTeachers(
       toIntID(String(schoolIdStr)),
       classIdStr ? toIntID(String(classIdStr)) : null,
-      academicYearValue ? toIntID(String(academicYearValue)) : null
+      academicYearValue ? toIntID(String(academicYearValue)) : null,
+      statusStr
     );
   }
 

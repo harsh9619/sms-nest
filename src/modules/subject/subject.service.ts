@@ -106,7 +106,8 @@ export class SubjectService {
   async getSchoolSubjectTeachers(
     schoolId: number,
     classId?: number | null,
-    schoolAcademicYearId?: number | null
+    schoolAcademicYearId?: number | null,
+    statusStr?: string,
   ) {
     const parameters: any[] = [schoolId];
     const filters = ["sc.school_id = $1"];
@@ -141,6 +142,8 @@ export class SubjectService {
       );
     }
 
+
+
     const rows = await this.schoolClassSubjectRepo.query(
       `SELECT
          scs.id AS class_subject_id,
@@ -171,7 +174,9 @@ export class SubjectService {
       parameters
     );
 
-    return rows.map((row: any) => ({
+
+
+    const schclsSubjectData = rows.map((row: any) => ({
       id: row.assignment_id ? String(row.assignment_id) : (row.class_subject_id ? String(row.class_subject_id) : null),
       classSubjectId: row.class_subject_id ? String(row.class_subject_id) : null,
       schoolId: String(row.school_id),
@@ -191,6 +196,39 @@ export class SubjectService {
       teacherId: row.teacher_id ? String(row.teacher_id) : null,
       teacherName: row.teacher_name || null,
     }));
+
+    // if (statusStr && statusStr !== "") {
+    //   if (statusStr.toLowerCase() === 'assigned') {
+    //     return schclsSubjectData.filter((item: any) => item.teacherId !== null);
+    //   }
+
+    //   if (statusStr.toLowerCase() === 'unassigned') {
+    //     return schclsSubjectData.filter((item: any) => item.teacherId === null);
+    //   }
+    // }
+
+    return schclsSubjectData;
+
+    // return rows.map((row: any) => ({
+    //   id: row.assignment_id ? String(row.assignment_id) : (row.class_subject_id ? String(row.class_subject_id) : null),
+    //   classSubjectId: row.class_subject_id ? String(row.class_subject_id) : null,
+    //   schoolId: String(row.school_id),
+    //   schoolAcademicYearId: row.school_academic_year_id
+    //     ? String(row.school_academic_year_id)
+    //     : null,
+    //   classId: String(row.class_id),
+    //   className: row.class_name,
+    //   divisionId: row.division_master_id ? String(row.division_master_id) : null,
+    //   divisionName: row.division_name || row.class_division || null,
+    //   classDivision: row.class_division || row.division_name || "",
+    //   classSection: row.class_division || row.division_name || "",
+    //   subjectId: row.subject_master_id ? String(row.subject_master_id) : null,
+    //   subjectName: row.subject_name || "",
+    //   name: row.subject_name || "",
+    //   code: row.subject_code || null,
+    //   teacherId: row.teacher_id ? String(row.teacher_id) : null,
+    //   teacherName: row.teacher_name || null,
+    // }));
   }
 
   async addClassSubjects(schoolId: number, classId: number, masterSubjectIds: number[]) {
