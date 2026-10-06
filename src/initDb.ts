@@ -97,6 +97,20 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
   await appQuery(`ALTER TABLE school_class_fee_structures ADD COLUMN IF NOT EXISTS month VARCHAR(50);`);
 
+  await appQuery(`
+    ALTER TABLE timetables
+      ADD COLUMN IF NOT EXISTS class_master_id INT REFERENCES class_masters(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS division_master_id INT REFERENCES division_masters(id) ON DELETE SET NULL;
+  `);
+
+  await appQuery(`
+    UPDATE timetables tt
+    SET class_master_id = sc.class_master_id,
+        division_master_id = sc.division_master_id
+    FROM school_classes sc
+    WHERE tt.class_id = sc.id AND (tt.class_master_id IS NULL OR tt.division_master_id IS NULL);
+  `);
+
   // Ensure fee_receipts table exists and fees columns exist
   await appQuery(`
     CREATE TABLE IF NOT EXISTS fee_receipts (
@@ -1007,8 +1021,11 @@ async function initializeDatabase() {
       console.log("⏳ Seeding timetable slots...");
       const schoolId = toUUID("1");
       const sayId = await getSchoolAcadYearId(appQuery, schoolId, "2024-25");
-      const classRes = await appQuery("SELECT id FROM school_classes WHERE school_id = $1 LIMIT 1", [schoolId]);
-      const classId = classRes.rows[0]?.id;
+      const classRes = await appQuery("SELECT id, class_master_id, division_master_id FROM school_classes WHERE school_id = $1 LIMIT 1", [schoolId]);
+      const targetClassRow = classRes.rows[0];
+      const classId = targetClassRow?.id;
+      const classMasterId = targetClassRow?.class_master_id || null;
+      const divisionMasterId = targetClassRow?.division_master_id || null;
 
       if (classId) {
         const subRes = await appQuery(
@@ -1033,10 +1050,10 @@ async function initializeDatabase() {
               const subject = subjects[idx % subjects.length];
               const slot = timeSlots[idx];
               await appQuery(
-                `INSERT INTO timetables (school_id, school_academic_year_id, class_id, subject_master_id, day_of_week, start_time, end_time, classroom)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `INSERT INTO timetables (school_id, school_academic_year_id, class_id, class_master_id, division_master_id, subject_master_id, day_of_week, start_time, end_time, classroom)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                  ON CONFLICT DO NOTHING`,
-                [schoolId, sayId, classId, subject.id, day, slot.start, slot.end, `Room ${100 + idx}`]
+                [schoolId, sayId, classId, classMasterId, divisionMasterId, subject.id, day, slot.start, slot.end, `Room ${100 + idx}`]
               );
             }
           }

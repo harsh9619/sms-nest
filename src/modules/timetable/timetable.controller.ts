@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   NotFoundException,
 } from "@nestjs/common";
 import { TimetableService } from "./timetable.service.js";
@@ -21,31 +22,40 @@ export class TimetableController {
     @Param("schoolId") schoolIdStr: string,
     @Query("classId") classIdStr?: string,
     @Query("teacherId") teacherIdStr?: string,
-    @Query("divisionId") divisionIdStr?: string,
+    // @Query("divisionId") divisionIdStr?: string,
     @Query("division") divisionStr?: string,
-    @Query("dayOfWeek") dayOfWeekStr?: string
+    @Query("dayOfWeek") dayOfWeekStr?: string,
+    // @Query("classMasterId") classMasterIdStr?: string,
+    // @Query("divisionMasterId") divisionMasterIdStr?: string,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : null;
     const classId = classIdStr ? toIntID(String(classIdStr)) : null;
     const teacherId = teacherIdStr ? toIntID(String(teacherIdStr)) : null;
-    const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : null;
-    const division = divisionStr || null;
+    // const divisionId = divisionIdStr ? toIntID(String(divisionIdStr)) : null;
+    const division = divisionStr ? String(divisionStr) : null;
     const dayOfWeek = dayOfWeekStr || null;
+    // const classMasterId = classMasterIdStr ? toIntID(String(classMasterIdStr)) : null;
+    // const divisionMasterId = divisionMasterIdStr ? toIntID(String(divisionMasterIdStr)) : null;
 
     return this.timetableService.getTimetables(
       schoolId,
       classId,
       teacherId,
-      divisionId,
+      // divisionId,
       division,
-      dayOfWeek
+      dayOfWeek,
+      // classMasterId,
+      // divisionMasterId,
+      academicYearHeader
     );
   }
 
   @Post("generate")
   async generateTimetable(
     @Param("schoolId") schoolIdStr: string,
-    @Body() body: any
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = toIntID(String(schoolIdStr));
     const {
@@ -59,52 +69,72 @@ export class TimetableController {
       clearExisting,
     } = body;
 
-    return this.timetableService.generateTimetable(schoolId, {
-      classId: classId ? toIntID(classId) : null,
-      daysOfWeek,
-      startTime,
-      endTime,
-      periodDuration: periodDuration ? Number(periodDuration) : undefined,
-      breakStartTime,
-      breakEndTime,
-      clearExisting: clearExisting !== undefined ? Boolean(clearExisting) : true,
-    });
+    return this.timetableService.generateTimetable(
+      schoolId,
+      {
+        classId: classId ? toIntID(classId) : null,
+        daysOfWeek,
+        startTime,
+        endTime,
+        periodDuration: periodDuration ? Number(periodDuration) : undefined,
+        breakStartTime,
+        breakEndTime,
+        clearExisting: clearExisting !== undefined ? Boolean(clearExisting) : true,
+      },
+      academicYearHeader
+    );
   }
 
   @Post()
   async createTimetable(
     @Param("schoolId") schoolIdStr: string,
-    @Body() body: any
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const schoolId = toIntID(String(schoolIdStr));
-    const { classId, subjectId, dayOfWeek, startTime, endTime, classroom } = body;
+    const { classId, classMasterId, divisionMasterId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = body;
 
-    return this.timetableService.createTimetable(schoolId, {
-      classId: toIntID(classId),
-      subjectId: toIntID(subjectId),
-      dayOfWeek,
-      startTime,
-      endTime,
-      classroom,
-    });
+    return this.timetableService.createTimetable(
+      schoolId,
+      {
+        classId: classId ? toIntID(classId) : null,
+        classMasterId: classMasterId ? toIntID(classMasterId) : null,
+        divisionMasterId: divisionMasterId ? toIntID(divisionMasterId) : null,
+        subjectId: toIntID(subjectId),
+        teacherId: teacherId ? toIntID(teacherId) : null,
+        dayOfWeek,
+        startTime,
+        endTime,
+        classroom,
+      },
+      academicYearHeader
+    );
   }
 
   @Put(":id")
   async updateTimetable(
     @Param("id") idStr: string,
-    @Body() body: any
+    @Body() body: any,
+    @Headers("academicyearid") academicYearHeader?: string
   ) {
     const timetableId = toIntID(idStr);
-    const { classId, subjectId, dayOfWeek, startTime, endTime, classroom } = body;
+    const { classId, classMasterId, divisionMasterId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = body;
 
-    const updated = await this.timetableService.updateTimetable(timetableId, {
-      classId: toIntID(classId),
-      subjectId: toIntID(subjectId),
-      dayOfWeek,
-      startTime,
-      endTime,
-      classroom,
-    });
+    const updated = await this.timetableService.updateTimetable(
+      timetableId,
+      {
+        classId: classId ? toIntID(classId) : null,
+        classMasterId: classMasterId ? toIntID(classMasterId) : null,
+        divisionMasterId: divisionMasterId ? toIntID(divisionMasterId) : null,
+        subjectId: toIntID(subjectId),
+        teacherId: teacherId ? toIntID(teacherId) : null,
+        dayOfWeek,
+        startTime,
+        endTime,
+        classroom,
+      },
+      academicYearHeader
+    );
 
     if (!updated) {
       throw new NotFoundException("Timetable slot not found");

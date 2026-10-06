@@ -7,6 +7,7 @@ import { ClassSubject } from "../../entities/class-subject.entity.js";
 import { SubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { SubjectMaster } from "../../entities/subject-master.entity.js";
 import { User } from "../../entities/user.entity.js";
+import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 export interface GenerateTimetableConfig {
   classId?: number | null;
@@ -33,17 +34,22 @@ export class TimetableService {
     @InjectRepository(SubjectMaster)
     private subjectMasterRepo: Repository<SubjectMaster>,
     @InjectRepository(User)
-    private userRepo: Repository<User>
+    private userRepo: Repository<User>,
+    private ayService: AcademicYearService
   ) { }
 
   async getTimetables(
     schoolId: number | null,
     classId: number | null,
     teacherId: number | null,
-    divisionId?: number | null,
+    // divisionId?: number | null,
     division?: string | null,
-    dayOfWeek?: string | null
+    dayOfWeek?: string | null,
+    // classMasterId?: number | null,
+    // divisionMasterId?: number | null,
+    academicYearHeader?: string | null
   ) {
+    const sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
     const qb = this.ttRepo
       .createQueryBuilder("tt")
       .innerJoinAndSelect("tt.class", "c")
@@ -53,20 +59,31 @@ export class TimetableService {
     if (schoolId) {
       qb.andWhere("tt.school_id = :schoolId", { schoolId });
     }
-    if (classId) {
-      qb.andWhere("tt.class_id = :classId", { classId });
+    if (sayId) {
+      qb.andWhere("(tt.school_academic_year_id = :sayId OR tt.school_academic_year_id IS NULL)", { sayId });
     }
     if (teacherId) {
       qb.andWhere("tt.teacher_id = :teacherId", { teacherId });
     }
-    if (divisionId) {
-      qb.andWhere("c.division_master_id = :divisionId", { divisionId });
+    // if (classId) {
+    //   qb.andWhere("(tt.class_id = :classId OR tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
+    // }
+
+    if (classId) {
+      qb.andWhere("(tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
     }
-    if (division) {
-      qb.andWhere("LOWER(c.division) = LOWER(:division)", { division });
+    // if (classMasterId) {
+    //   qb.andWhere("(tt.class_master_id = :classMasterId OR c.class_master_id = :classMasterId)", { classMasterId });
+    // }
+    const finalDivMasterId = division;
+    if (finalDivMasterId) {
+      qb.andWhere("(tt.division_master_id = :finalDivMasterId OR c.division_master_id = :finalDivMasterId)", { finalDivMasterId });
     }
+    // if (division) {
+    //   qb.andWhere("LOWER(c.division) = LOWER(:division)", { division });
+    // }
     if (dayOfWeek) {
-      qb.andWhere("LOWER(tt.day_of_week) = LOWER(:dayOfWeek)", { dayOfWeek });
+      qb.andWhere("LOWER(CAST(tt.day_of_week AS text)) = LOWER(:dayOfWeek)", { dayOfWeek });
     }
 
     qb.orderBy("tt.day_of_week", "ASC").addOrderBy("tt.start_time", "ASC");
@@ -75,9 +92,11 @@ export class TimetableService {
     return slots.map((s) => ({
       id: String(s.id),
       classId: String(s.class_id),
+      classMasterId: s.class_master_id ? String(s.class_master_id) : (s.class?.class_master_id ? String(s.class.class_master_id) : null),
+      divisionMasterId: s.division_master_id ? String(s.division_master_id) : (s.class?.division_master_id ? String(s.class.division_master_id) : null),
       className: s.class ? `${s.class.name}-${s.class.division || ""}` : "",
       section: s.class ? s.class.division || "" : "",
-      divisionId: s.class?.division_master_id ? String(s.class.division_master_id) : null,
+      divisionId: s.division_master_id ? String(s.division_master_id) : (s.class?.division_master_id ? String(s.class.division_master_id) : null),
       subjectId: String(s.subject_master_id),
       subjectName: s.subject_master ? s.subject_master.name : "",
       teacherId: s.teacher_id ? String(s.teacher_id) : null,
@@ -90,14 +109,40 @@ export class TimetableService {
     }));
   }
 
-  async createTimetable(schoolId: number, data: any) {
-    const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
+  async createTimetable(schoolId: number, data: any, academicYearHeader?: string | null) {
+    const sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
+    const { classId, classMasterId, divisionMasterId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
+
+    let finalClassMasterId = classMasterId ? Number(classMasterId) : null;
+    let finalDivisionMasterId = divisionMasterId ? Number(divisionMasterId) : null;
+
+    if (classId && (!finalClassMasterId || !finalDivisionMasterId)) {
+      const cls = await this.classRepo.findOne({ where: { id: Number(classId) } });
+      if (cls) {
+        if (!finalClassMasterId && cls.class_master_id) finalClassMasterId = cls.class_master_id;
+        if (!finalDivisionMasterId && cls.division_master_id) finalDivisionMasterId = cls.division_master_id;
+      }
+    }
+
+    let finalTeacherId = teacherId ? Number(teacherId) : null;
+    if (!finalTeacherId && (classId || finalDivisionMasterId) && subjectId) {
+      const st = await this.subjectTeacherRepo.findOne({
+        where: [
+          ...(classId ? [{ school_id: schoolId, class_id: Number(classId), subject_master_id: Number(subjectId) }] : []),
+          ...(finalDivisionMasterId ? [{ school_id: schoolId, division_master_id: finalDivisionMasterId, subject_master_id: Number(subjectId) }] : []),
+        ],
+      });
+      if (st) finalTeacherId = st.teacher_id;
+    }
 
     const newSlot = this.ttRepo.create({
       school_id: schoolId,
+      school_academic_year_id: sayId || null,
       class_id: classId,
+      class_master_id: finalClassMasterId,
+      division_master_id: finalDivisionMasterId,
       subject_master_id: subjectId,
-      teacher_id: teacherId || null,
+      teacher_id: finalTeacherId,
       day_of_week: dayOfWeek.toLowerCase(),
       start_time: startTime,
       end_time: endTime,
@@ -105,27 +150,64 @@ export class TimetableService {
     });
 
     const saved = await this.ttRepo.save(newSlot);
-    const list = await this.getTimetables(schoolId, classId, null);
+    // const list = await this.getTimetables(schoolId, classId, null, null, null, null, null, null, academicYearHeader);
+    const list = await this.getTimetables(schoolId, classId, null, null, null, academicYearHeader);
     return list.find((s) => Number(s.id) === saved.id) || null;
   }
 
-  async updateTimetable(timetableId: number, data: any) {
-    const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
+  async updateTimetable(timetableId: number, data: any, academicYearHeader?: string | null) {
+    const sayId = await this.ayService.getSchoolAcademicYearId(null, academicYearHeader);
+    const { classId, classMasterId, divisionMasterId, subjectId, teacherId, dayOfWeek, startTime, endTime, classroom } = data;
 
-    await this.ttRepo.update(timetableId, {
+    let finalClassMasterId = classMasterId ? Number(classMasterId) : null;
+    let finalDivisionMasterId = divisionMasterId ? Number(divisionMasterId) : null;
+
+    if (classId && (!finalClassMasterId || !finalDivisionMasterId)) {
+      const cls = await this.classRepo.findOne({ where: { id: Number(classId) } });
+      if (cls) {
+        if (!finalClassMasterId && cls.class_master_id) finalClassMasterId = cls.class_master_id;
+        if (!finalDivisionMasterId && cls.division_master_id) finalDivisionMasterId = cls.division_master_id;
+      }
+    }
+
+    let finalTeacherId = teacherId ? Number(teacherId) : null;
+    if (!finalTeacherId && (classId || finalDivisionMasterId) && subjectId) {
+      const existingSlot = await this.ttRepo.findOne({ where: { id: timetableId } });
+      const targetSchoolId = existingSlot?.school_id;
+      if (targetSchoolId) {
+        const st = await this.subjectTeacherRepo.findOne({
+          where: [
+            ...(classId ? [{ school_id: targetSchoolId, class_id: Number(classId), subject_master_id: Number(subjectId) }] : []),
+            ...(finalDivisionMasterId ? [{ school_id: targetSchoolId, division_master_id: finalDivisionMasterId, subject_master_id: Number(subjectId) }] : []),
+          ],
+        });
+        if (st) finalTeacherId = st.teacher_id;
+      }
+    }
+
+    const updatePayload: any = {
       class_id: classId,
+      class_master_id: finalClassMasterId,
+      division_master_id: finalDivisionMasterId,
       subject_master_id: subjectId,
-      teacher_id: teacherId || null,
+      teacher_id: finalTeacherId,
       day_of_week: dayOfWeek.toLowerCase(),
       start_time: startTime,
       end_time: endTime,
       classroom,
-    });
+    };
+    if (sayId) {
+      updatePayload.school_academic_year_id = sayId;
+    }
+
+    await this.ttRepo.update(timetableId, updatePayload);
 
     const slot = await this.ttRepo.findOne({ where: { id: timetableId } });
     if (!slot) return null;
 
-    const list = await this.getTimetables(slot.school_id, null, null);
+    // const list = await this.getTimetables(slot.school_id, null, null, null, null, null, null, null, academicYearHeader);
+    const list = await this.getTimetables(slot.school_id, null, null, null, null, academicYearHeader);
+
     return list.find((s) => Number(s.id) === timetableId) || null;
   }
 
@@ -143,7 +225,8 @@ export class TimetableService {
   /**
    * Automatic Timetable Generation Algorithm
    */
-  async generateTimetable(schoolId: number, config: GenerateTimetableConfig) {
+  async generateTimetable(schoolId: number, config: GenerateTimetableConfig, academicYearHeader?: string | null) {
+    const sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
     const {
       classId,
       daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
@@ -304,6 +387,7 @@ export class TimetableService {
     const warnings: string[] = [];
 
     // 8. Generate timetable per class
+    let classIdx = 0;
     for (const cls of targetClasses) {
       // Fetch subjects linked to this class
       const classSubjectsRel = await this.classSubjectRepo.find({
@@ -317,9 +401,12 @@ export class TimetableService {
         subjectsForClass = allSchoolSubjects;
       }
 
-      // Pre-fetch subject-teacher assignments
+      // Pre-fetch subject-teacher assignments matching class_id or division_master_id
       const subjectTeacherRels = await this.subjectTeacherRepo.find({
-        where: { school_id: schoolId, class_id: cls.id },
+        where: [
+          { school_id: schoolId, class_id: cls.id },
+          ...(cls.division_master_id ? [{ school_id: schoolId, division_master_id: cls.division_master_id }] : []),
+        ],
       });
 
       // Build subject to teachers map
@@ -328,10 +415,14 @@ export class TimetableService {
         if (!subjectTeachersMap[st.subject_master_id]) {
           subjectTeachersMap[st.subject_master_id] = [];
         }
-        subjectTeachersMap[st.subject_master_id].push(st.teacher_id);
+        if (!subjectTeachersMap[st.subject_master_id].includes(st.teacher_id)) {
+          subjectTeachersMap[st.subject_master_id].push(st.teacher_id);
+        }
       }
 
-      let subjectIndex = 0;
+      // Stagger initial subject rotation index per class to avoid simultaneous teacher collisions
+      let subjectIndex = classIdx;
+      classIdx++;
 
       for (const dayRaw of daysOfWeek) {
         const day = dayRaw.toLowerCase();
@@ -355,25 +446,29 @@ export class TimetableService {
             }
           }
 
-          // If no qualified teacher assigned specifically for class/subject is free, try any school teacher free
-          if (!assignedTeacherId && allTeachers.length > 0) {
-            for (const t of allTeachers) {
-              if (isTeacherFree(t.id, day, slotIdx)) {
-                assignedTeacherId = t.id;
-                break;
-              }
-            }
+          // If configured teacher is busy at this slot, keep configured teacher and log warning instead of assigning random wrong teacher
+          if (!assignedTeacherId && qualifiedTeacherIds.length > 0) {
+            assignedTeacherId = qualifiedTeacherIds[0];
+            const tObj = allTeachers.find((t) => t.id === qualifiedTeacherIds[0]);
+            warnings.push(
+              `Conflict on ${day.toUpperCase()} Period ${slotIdx + 1} (${slotTime.startTime.substring(0, 5)}): Teacher ${tObj?.name || qualifiedTeacherIds[0]} is assigned to multiple classes simultaneously.`
+            );
           }
 
           if (assignedTeacherId) {
             markTeacherOccupied(assignedTeacherId, day, slotIdx);
           } else if (allTeachers.length > 0) {
-            warnings.push(`Day ${day.toUpperCase()} Period ${slotIdx + 1} (${slotTime.startTime.substring(0, 5)}): All teachers were occupied for Class ${cls.name}`);
+            warnings.push(
+              `Day ${day.toUpperCase()} Period ${slotIdx + 1} (${slotTime.startTime.substring(0, 5)}): No subject teacher configured for ${currentSubject.name} in Class ${cls.name}`
+            );
           }
 
           newSlotsToSave.push({
             school_id: schoolId,
+            school_academic_year_id: sayId || null,
             class_id: cls.id,
+            class_master_id: cls.class_master_id || null,
+            division_master_id: cls.division_master_id || null,
             subject_master_id: currentSubject.id,
             teacher_id: assignedTeacherId,
             day_of_week: day,
@@ -389,7 +484,8 @@ export class TimetableService {
     const savedEntities = await this.ttRepo.save(this.ttRepo.create(newSlotsToSave as any));
 
     // Return summary and updated timetables list for target classes
-    const resultList = await this.getTimetables(schoolId, classId || null, null);
+    // const resultList = await this.getTimetables(schoolId, classId || null, null, null, null, null, null, null, academicYearHeader);
+    const resultList = await this.getTimetables(schoolId, classId || null, null, null, null, academicYearHeader);
 
     return {
       message: `Successfully generated ${savedEntities.length} timetable slots across ${targetClasses.length} class(es).`,

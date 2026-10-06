@@ -430,6 +430,8 @@ CREATE TABLE IF NOT EXISTS timetables (
   school_id               INT         NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
   school_academic_year_id INT         REFERENCES school_academic_years(id) ON DELETE SET NULL,
   class_id                INT         NOT NULL REFERENCES school_classes(id)       ON DELETE CASCADE,
+  class_master_id         INT         REFERENCES class_masters(id)                 ON DELETE SET NULL,
+  division_master_id      INT         REFERENCES division_masters(id)              ON DELETE SET NULL,
   subject_master_id       INT         NOT NULL REFERENCES subject_masters(id)      ON DELETE CASCADE,
   teacher_id              INT         REFERENCES users(id) ON DELETE SET NULL,
   day_of_week             day_of_week NOT NULL,
@@ -441,8 +443,10 @@ CREATE TABLE IF NOT EXISTS timetables (
   UNIQUE (class_id, day_of_week, start_time)
 );
 
-CREATE INDEX IF NOT EXISTS idx_timetables_school_id ON timetables(school_id);
-CREATE INDEX IF NOT EXISTS idx_timetables_class_id  ON timetables(class_id);
+CREATE INDEX IF NOT EXISTS idx_timetables_school_id          ON timetables(school_id);
+CREATE INDEX IF NOT EXISTS idx_timetables_class_id           ON timetables(class_id);
+CREATE INDEX IF NOT EXISTS idx_timetables_class_master_id    ON timetables(class_master_id);
+CREATE INDEX IF NOT EXISTS idx_timetables_division_master_id ON timetables(division_master_id);
 
 -- =======================
 -- TABLE: homework

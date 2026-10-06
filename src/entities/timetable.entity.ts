@@ -12,6 +12,8 @@ import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { SubjectMaster } from "./subject-master.entity.js";
 import { User } from "./user.entity.js";
 import { SchoolClass as Class } from "./school-class.entity.js";
+import { ClassMaster } from "./class-master.entity.js";
+import { DivisionMaster } from "./division-master.entity.js";
 
 @Entity("timetables")
 export class Timetable {
@@ -38,6 +40,20 @@ export class Timetable {
   @ManyToOne(() => Class, { onDelete: "CASCADE" })
   @JoinColumn({ name: "class_id" })
   class: Class;
+
+  @Column({ type: "int", nullable: true })
+  class_master_id: number;
+
+  @ManyToOne(() => ClassMaster, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "class_master_id" })
+  class_master: ClassMaster;
+
+  @Column({ type: "int", nullable: true })
+  division_master_id: number;
+
+  @ManyToOne(() => DivisionMaster, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "division_master_id" })
+  division_master: DivisionMaster;
 
   @Column({ type: "int" })
   subject_master_id: number;
