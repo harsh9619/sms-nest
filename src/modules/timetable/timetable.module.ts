@@ -6,6 +6,7 @@ import { ClassSubject } from "../../entities/class-subject.entity.js";
 import { SubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { SubjectMaster } from "../../entities/subject-master.entity.js";
 import { User } from "../../entities/user.entity.js";
+import { Student } from "../../entities/student.entity.js";
 import { AcademicYearModule } from "../academic-year/academic-year.module.js";
 import { TimetableController } from "./timetable.controller.js";
 import { TimetableService } from "./timetable.service.js";
@@ -19,6 +20,7 @@ import { TimetableService } from "./timetable.service.js";
       SubjectTeacher,
       SubjectMaster,
       User,
+      Student,
     ]),
     AcademicYearModule,
   ],

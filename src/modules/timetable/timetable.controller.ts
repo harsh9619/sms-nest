@@ -8,8 +8,10 @@ import {
   Query,
   Body,
   Headers,
+  Req,
   NotFoundException,
 } from "@nestjs/common";
+import jwt from "jsonwebtoken";
 import { TimetableService } from "./timetable.service.js";
 import { toIntID } from "../../db/index.js";
 
@@ -27,7 +29,8 @@ export class TimetableController {
     @Query("dayOfWeek") dayOfWeekStr?: string,
     // @Query("classMasterId") classMasterIdStr?: string,
     // @Query("divisionMasterId") divisionMasterIdStr?: string,
-    @Headers("academicyearid") academicYearHeader?: string
+    @Headers("academicyearid") academicYearHeader?: string,
+    @Req() req?: any
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : null;
     const classId = classIdStr ? toIntID(String(classIdStr)) : null;
@@ -38,6 +41,18 @@ export class TimetableController {
     // const classMasterId = classMasterIdStr ? toIntID(String(classMasterIdStr)) : null;
     // const divisionMasterId = divisionMasterIdStr ? toIntID(String(divisionMasterIdStr)) : null;
 
+    let currentUser: any = req?.user;
+    if (!currentUser && req?.headers?.authorization?.startsWith("Bearer ")) {
+      try {
+        const token = req.headers.authorization.slice(7).trim();
+        const jwtSecret = process.env.JWT_SECRET || "sms-jwt-secret";
+        const verifyFn = jwt.verify || (jwt as any).default?.verify;
+        currentUser = verifyFn(token, jwtSecret);
+      } catch (e) {
+        // ignore decoding errors
+      }
+    }
+
     return this.timetableService.getTimetables(
       schoolId,
       classId,
@@ -47,7 +62,8 @@ export class TimetableController {
       dayOfWeek,
       // classMasterId,
       // divisionMasterId,
-      academicYearHeader
+      academicYearHeader,
+      currentUser
     );
   }
 

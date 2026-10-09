@@ -7,6 +7,7 @@ import { ClassSubject } from "../../entities/class-subject.entity.js";
 import { SubjectTeacher } from "../../entities/subject-teacher.entity.js";
 import { SubjectMaster } from "../../entities/subject-master.entity.js";
 import { User } from "../../entities/user.entity.js";
+import { Student } from "../../entities/student.entity.js";
 import { AcademicYearService } from "../academic-year/academic-year.service.js";
 
 export interface GenerateTimetableConfig {
@@ -35,6 +36,8 @@ export class TimetableService {
     private subjectMasterRepo: Repository<SubjectMaster>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Student)
+    private studentRepo: Repository<Student>,
     private ayService: AcademicYearService
   ) { }
 
@@ -42,12 +45,10 @@ export class TimetableService {
     schoolId: number | null,
     classId: number | null,
     teacherId: number | null,
-    // divisionId?: number | null,
     division?: string | null,
     dayOfWeek?: string | null,
-    // classMasterId?: number | null,
-    // divisionMasterId?: number | null,
-    academicYearHeader?: string | null
+    academicYearHeader?: string | null,
+    currentUser?: { id?: number; sub?: number; role?: string } | null
   ) {
     const sayId = await this.ayService.getSchoolAcademicYearId(schoolId, academicYearHeader);
     const qb = this.ttRepo
@@ -62,26 +63,66 @@ export class TimetableService {
     if (sayId) {
       qb.andWhere("(tt.school_academic_year_id = :sayId OR tt.school_academic_year_id IS NULL)", { sayId });
     }
-    if (teacherId) {
-      qb.andWhere("tt.teacher_id = :teacherId", { teacherId });
-    }
-    // if (classId) {
-    //   qb.andWhere("(tt.class_id = :classId OR tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
-    // }
 
-    if (classId) {
-      qb.andWhere("(tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
+    const rawRole = (currentUser?.role || "").toLowerCase();
+    const userId = currentUser?.sub || currentUser?.id ? Number(currentUser?.sub || currentUser?.id) : null;
+
+    const isAdminOrPrincipal =
+      rawRole === "admin" ||
+      rawRole === "super_admin" ||
+      rawRole === "school_admin" ||
+      rawRole === "principal";
+    const isTeacherRole = rawRole === "teacher";
+    const isStudentRole = rawRole === "student";
+
+    if (isTeacherRole) {
+      // Teacher role: show only teacher's classes and subjects
+      const effectiveTeacherId = teacherId || userId;
+      if (effectiveTeacherId) {
+        qb.andWhere("tt.teacher_id = :effectiveTeacherId", { effectiveTeacherId });
+      }
+      if (classId) {
+        qb.andWhere("(tt.class_id = :classId OR tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
+      }
+    } else if (isStudentRole) {
+      // Student role: show only student's class data
+      let effectiveClassId = classId;
+      let effectiveDivisionMasterId: number | null = null;
+
+      if (!effectiveClassId && userId) {
+        const student = await this.studentRepo.findOne({ where: { user_id: userId } });
+        if (student) {
+          effectiveClassId = student.class_id || null;
+          effectiveDivisionMasterId = student.division_master_id || null;
+        }
+      }
+
+      if (effectiveClassId) {
+        qb.andWhere("(tt.class_id = :effectiveClassId OR tt.class_master_id = :effectiveClassId OR c.class_master_id = :effectiveClassId)", {
+          effectiveClassId,
+        });
+      }
+      if (effectiveDivisionMasterId) {
+        qb.andWhere("(tt.division_master_id = :effectiveDivisionMasterId OR c.division_master_id = :effectiveDivisionMasterId)", {
+          effectiveDivisionMasterId,
+        });
+      }
+    } else {
+      // Admin / Principal / School Admin (or default):
+      // Show data for all classes and teachers, unless explicit query params provided
+      if (teacherId) {
+        qb.andWhere("tt.teacher_id = :teacherId", { teacherId });
+      }
+      if (classId) {
+        qb.andWhere("(tt.class_id = :classId OR tt.class_master_id = :classId OR c.class_master_id = :classId)", { classId });
+      }
     }
-    // if (classMasterId) {
-    //   qb.andWhere("(tt.class_master_id = :classMasterId OR c.class_master_id = :classMasterId)", { classMasterId });
-    // }
+
     const finalDivMasterId = division;
-    if (finalDivMasterId) {
+    if (finalDivMasterId && !isStudentRole) {
       qb.andWhere("(tt.division_master_id = :finalDivMasterId OR c.division_master_id = :finalDivMasterId)", { finalDivMasterId });
     }
-    // if (division) {
-    //   qb.andWhere("LOWER(c.division) = LOWER(:division)", { division });
-    // }
+
     if (dayOfWeek) {
       qb.andWhere("LOWER(CAST(tt.day_of_week AS text)) = LOWER(:dayOfWeek)", { dayOfWeek });
     }
