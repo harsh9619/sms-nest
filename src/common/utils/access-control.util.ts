@@ -28,6 +28,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<
     "schools/create": { read: true, create: true, update: true, delete: true, export: true },
     "class-subject-config": { read: true, create: true, update: true, delete: true, export: true },
     settings: { read: true, create: true, update: true, delete: true, export: true },
+    "academic-calendar": { read: true, create: true, update: true, delete: true, export: true },
   },
   principal: {
     dashboard: { read: true, create: false, update: false, delete: false, export: true },
@@ -41,6 +42,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<
     "my-salary": { read: true, create: false, update: false, delete: false, export: true },
     "reports/fees": { read: true, create: false, update: false, delete: false, export: true },
     "reports/salaries": { read: true, create: false, update: false, delete: false, export: true },
+    "academic-calendar": { read: true, create: true, update: true, delete: true, export: true },
   },
   teacher: {
     dashboard: { read: true, create: false, update: false, delete: false, export: false },
@@ -50,16 +52,19 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<
     attendance: { read: true, create: true, update: true, delete: false, export: true },
     timetable: { read: true, create: false, update: false, delete: false, export: false },
     "my-salary": { read: true, create: false, update: false, delete: false, export: true },
+    "academic-calendar": { read: true, create: false, update: false, delete: false, export: true },
   },
   student: {
     dashboard: { read: true, create: false, update: false, delete: false, export: false },
     timetable: { read: true, create: false, update: false, delete: false, export: false },
     "my-fees": { read: true, create: false, update: false, delete: false, export: true },
+    "academic-calendar": { read: true, create: false, update: false, delete: false, export: false },
   },
   parent: {
     dashboard: { read: true, create: false, update: false, delete: false, export: false },
     timetable: { read: true, create: false, update: false, delete: false, export: false },
     "my-fees": { read: true, create: false, update: false, delete: false, export: true },
+    "academic-calendar": { read: true, create: false, update: false, delete: false, export: false },
   },
 };
 

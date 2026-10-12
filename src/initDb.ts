@@ -133,6 +133,218 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   await appQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS user_name VARCHAR(150);`);
   await appQuery(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_user_name ON users(user_name);`);
   await appQuery(`UPDATE users SET user_name = LOWER(SPLIT_PART(email, '@', 1)) WHERE user_name IS NULL AND email IS NOT NULL AND email != '';`);
+
+  // Ensure academic_calendar_events and school_working_days tables exist
+  await appQuery(`
+    CREATE TABLE IF NOT EXISTS academic_calendar_events (
+      id                      SERIAL PRIMARY KEY,
+      school_id               INT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL,
+      title                   VARCHAR(250) NOT NULL,
+      type                    VARCHAR(50) NOT NULL DEFAULT 'EVENT',
+      category                VARCHAR(100),
+      start_date              DATE NOT NULL,
+      end_date                DATE NOT NULL,
+      start_time              VARCHAR(10),
+      end_time                VARCHAR(10),
+      description             TEXT,
+      location                VARCHAR(200),
+      target_roles            VARCHAR(255) DEFAULT 'all',
+      is_holiday              BOOLEAN NOT NULL DEFAULT FALSE,
+      affects_attendance      BOOLEAN NOT NULL DEFAULT TRUE,
+      color                   VARCHAR(30),
+      created_by              INT REFERENCES users(id) ON DELETE SET NULL,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+  await appQuery(`ALTER TABLE academic_calendar_events ADD COLUMN IF NOT EXISTS school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL;`);
+
+  await appQuery(`
+    CREATE TABLE IF NOT EXISTS school_working_days (
+      id                      SERIAL PRIMARY KEY,
+      school_id               INT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL,
+      session_start_date      DATE,
+      session_end_date        DATE,
+      working_days            JSONB NOT NULL DEFAULT '["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]',
+      periods_per_day         INT NOT NULL DEFAULT 8,
+      school_start_time       VARCHAR(10) DEFAULT '08:30',
+      school_end_time         VARCHAR(10) DEFAULT '14:30',
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(school_id)
+    );
+  `);
+  await appQuery(`ALTER TABLE school_working_days ADD COLUMN IF NOT EXISTS school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL;`);
+
+  // Seed initial events if empty
+  const countRes = await appQuery(`SELECT COUNT(*)::int as count FROM academic_calendar_events`);
+  if (countRes.rows[0].count === 0) {
+    console.log("⏳ Seeding sample academic calendar events and holidays...");
+    const sampleEvents = [
+      {
+        school_id: 1,
+        title: "School Reopening & New Session Orientation",
+        type: "EVENT",
+        category: "Academic",
+        start_date: "2026-04-01",
+        end_date: "2026-04-01",
+        start_time: "08:30",
+        end_time: "12:30",
+        description: "Welcome assembly and orientation program for students and parents.",
+        location: "Main Auditorium",
+        target_roles: "all",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "indigo"
+      },
+      {
+        school_id: 1,
+        title: "Independence Day Celebration",
+        type: "EVENT",
+        category: "National Event",
+        start_date: "2026-08-15",
+        end_date: "2026-08-15",
+        start_time: "08:00",
+        end_time: "11:00",
+        description: "Flag hoisting ceremony, patriotic cultural events and speeches.",
+        location: "School Ground",
+        target_roles: "all",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "emerald"
+      },
+      {
+        school_id: 1,
+        title: "Diwali Holidays",
+        type: "HOLIDAY",
+        category: "Festival",
+        start_date: "2026-10-28",
+        end_date: "2026-11-02",
+        start_time: null,
+        end_time: null,
+        description: "School closed for Diwali festival celebration.",
+        location: null,
+        target_roles: "all",
+        is_holiday: true,
+        affects_attendance: true,
+        color: "rose"
+      },
+      {
+        school_id: 1,
+        title: "Mid-Term Examination 2026",
+        type: "EXAM",
+        category: "Academic",
+        start_date: "2026-11-16",
+        end_date: "2026-11-26",
+        start_time: "09:00",
+        end_time: "12:00",
+        description: "Half-yearly written examinations for classes 1 to 12.",
+        location: "Examination Halls",
+        target_roles: "students,teachers",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "amber"
+      },
+      {
+        school_id: 1,
+        title: "Annual Sports & Athletics Meet",
+        type: "SPORTS",
+        category: "Co-Curricular",
+        start_date: "2026-12-18",
+        end_date: "2026-12-20",
+        start_time: "08:30",
+        end_time: "15:00",
+        description: "Inter-house sports competitions, track events, and trophy ceremony.",
+        location: "Sports Ground",
+        target_roles: "all",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "blue"
+      },
+      {
+        school_id: 1,
+        title: "Christmas & Winter Break",
+        type: "HOLIDAY",
+        category: "School Holiday",
+        start_date: "2026-12-25",
+        end_date: "2027-01-01",
+        start_time: null,
+        end_time: null,
+        description: "Winter vacation for students and faculty.",
+        location: null,
+        target_roles: "all",
+        is_holiday: true,
+        affects_attendance: true,
+        color: "rose"
+      },
+      {
+        school_id: 1,
+        title: "Parent-Teacher Meeting (PTM)",
+        type: "MEETING",
+        category: "Parent Meet",
+        start_date: "2027-01-16",
+        end_date: "2027-01-16",
+        start_time: "09:00",
+        end_time: "13:00",
+        description: "Discussion of Mid-Term exam report cards and student progress.",
+        location: "Respective Classrooms",
+        target_roles: "parents,teachers",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "purple"
+      },
+      {
+        school_id: 1,
+        title: "Republic Day Celebration",
+        type: "EVENT",
+        category: "National Event",
+        start_date: "2027-01-26",
+        end_date: "2027-01-26",
+        start_time: "08:30",
+        end_time: "11:30",
+        description: "Republic Day parade, flag hoisting, and prize distribution.",
+        location: "Main Ground",
+        target_roles: "all",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "emerald"
+      },
+      {
+        school_id: 1,
+        title: "Annual Board & Final Examination",
+        type: "EXAM",
+        category: "Academic",
+        start_date: "2027-03-01",
+        end_date: "2027-03-20",
+        start_time: "09:00",
+        end_time: "12:00",
+        description: "Final annual academic examinations for all classes.",
+        location: "Exam Classrooms",
+        target_roles: "students,teachers",
+        is_holiday: false,
+        affects_attendance: false,
+        color: "amber"
+      }
+    ];
+
+    for (const ev of sampleEvents) {
+      await appQuery(
+        `INSERT INTO academic_calendar_events (school_id, title, type, category, start_date, end_date, start_time, end_time, description, location, target_roles, is_holiday, affects_attendance, color)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+        [ev.school_id, ev.title, ev.type, ev.category, ev.start_date, ev.end_date, ev.start_time, ev.end_time, ev.description, ev.location, ev.target_roles, ev.is_holiday, ev.affects_attendance, ev.color]
+      );
+    }
+
+    await appQuery(
+      `INSERT INTO school_working_days (school_id, session_start_date, session_end_date, working_days, periods_per_day, school_start_time, school_end_time)
+       VALUES (1, '2026-04-01', '2027-03-31', '["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]', 8, '08:30', '14:30')
+       ON CONFLICT (school_id) DO NOTHING`
+    );
+
+    console.log("✅ Academic calendar events and holidays seeded successfully.");
+  }
 }
 
 const ROLE_MAP: Record<string, number> = {

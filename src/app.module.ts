@@ -30,6 +30,8 @@ import { DivisionMaster } from "./entities/division-master.entity.js";
 import { RoleMaster } from "./entities/role-master.entity.js";
 import { CasteMaster } from "./entities/caste-master.entity.js";
 import { SchoolClassFeeStructure } from "./entities/class-fee-structure.entity.js";
+import { AcademicCalendarEvent } from "./entities/academic-calendar-event.entity.js";
+import { SchoolWorkingDay } from "./entities/school-working-day.entity.js";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { SchoolModule } from "./modules/school/school.module.js";
@@ -48,6 +50,7 @@ import { MarkModule } from "./modules/mark/mark.module.js";
 import { AcademicYearModule } from "./modules/academic-year/academic-year.module.js";
 import { CasteModule } from "./modules/caste/caste.module.js";
 import { OcrModule } from "./modules/ocr/ocr.module.js";
+import { AcademicCalendarModule } from "./modules/academic-calendar/academic-calendar.module.js";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
 
@@ -94,6 +97,8 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               RoleMaster,
               CasteMaster,
               SchoolClassFeeStructure,
+              AcademicCalendarEvent,
+              SchoolWorkingDay,
             ],
             synchronize: false,
             extra: {
@@ -139,6 +144,8 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             RoleMaster,
             CasteMaster,
             SchoolClassFeeStructure,
+            AcademicCalendarEvent,
+            SchoolWorkingDay,
           ],
           synchronize: false,
           extra: {
@@ -166,6 +173,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
     AcademicYearModule,
     CasteModule,
     OcrModule,
+    AcademicCalendarModule,
   ],
 })
 export class AppModule implements NestModule {

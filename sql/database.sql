@@ -635,6 +635,59 @@ CREATE INDEX IF NOT EXISTS idx_notices_school_id ON notices(school_id);
 CREATE INDEX IF NOT EXISTS idx_notices_audience  ON notices(audience);
 
 -- =======================
+-- TABLE: academic_calendar_events
+-- =======================
+
+CREATE TABLE IF NOT EXISTS academic_calendar_events (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  title                   VARCHAR(250) NOT NULL,
+  type                    VARCHAR(50) NOT NULL DEFAULT 'EVENT',
+  category                VARCHAR(100),
+  start_date              DATE NOT NULL,
+  end_date                DATE NOT NULL,
+  start_time              VARCHAR(10),
+  end_time                VARCHAR(10),
+  description             TEXT,
+  location                VARCHAR(200),
+  target_roles            VARCHAR(255) DEFAULT 'all',
+  is_holiday              BOOLEAN NOT NULL DEFAULT FALSE,
+  affects_attendance      BOOLEAN NOT NULL DEFAULT TRUE,
+  color                   VARCHAR(30),
+  created_by              INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_school_id ON academic_calendar_events(school_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_school_acad_year_id ON academic_calendar_events(school_academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_dates ON academic_calendar_events(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_type ON academic_calendar_events(type);
+
+-- =======================
+-- TABLE: school_working_days
+-- =======================
+
+CREATE TABLE IF NOT EXISTS school_working_days (
+  id                      SERIAL PRIMARY KEY,
+  school_id               INT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  school_academic_year_id INT REFERENCES school_academic_years(id) ON DELETE SET NULL,
+  session_start_date      DATE,
+  session_end_date        DATE,
+  working_days            JSONB NOT NULL DEFAULT '["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]',
+  periods_per_day         INT NOT NULL DEFAULT 8,
+  school_start_time       VARCHAR(10) DEFAULT '08:30',
+  school_end_time         VARCHAR(10) DEFAULT '14:30',
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(school_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_school_working_days_school_id ON school_working_days(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_working_days_school_acad_year_id ON school_working_days(school_academic_year_id);
+
+-- =======================
 -- UPDATED_AT TRIGGER FUNCTION
 -- =======================
 
@@ -655,7 +708,7 @@ BEGIN
     'class_masters', 'subject_masters', 'division_masters', 'caste_masters',
     'school_classes', 'school_class_subjects', 'school_class_teachers', 'school_subject_teachers',
     'students', 'timetables', 'homework', 'fee_receipts', 'fees', 'school_class_fee_structures',
-    'salary_structures', 'salary_records', 'notices'
+    'salary_structures', 'salary_records', 'notices', 'academic_calendar_events', 'school_working_days'
   ]
   LOOP
     EXECUTE format('
