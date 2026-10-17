@@ -128,6 +128,38 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   `);
   await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS receipt_id INT REFERENCES fee_receipts(id) ON DELETE SET NULL;`);
   await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(100);`);
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS schedule_id INT;`);
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS installment_name VARCHAR(100);`);
+  await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS session_start VARCHAR(20);`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_session_start VARCHAR(20) DEFAULT 'april';`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_frequency VARCHAR(20) DEFAULT 'monthly';`);
+
+  await appQuery(`
+    CREATE TABLE IF NOT EXISTS fee_payment_schedules (
+      id                      SERIAL PRIMARY KEY,
+      school_id               INT           NOT NULL REFERENCES schools(id)              ON DELETE CASCADE,
+      school_academic_year_id INT           REFERENCES school_academic_years(id) ON DELETE SET NULL,
+      academic_year           VARCHAR(20),
+      schedule_name           VARCHAR(150),
+      session_start           VARCHAR(20)   NOT NULL DEFAULT 'april',
+      installment_format      VARCHAR(20)   NOT NULL DEFAULT 'monthly',
+      order_seq               INT           NOT NULL DEFAULT 1,
+      month_payable           VARCHAR(100)  NOT NULL,
+      fee_for_months          VARCHAR(100),
+      month_multiplier        INT           NOT NULL DEFAULT 1,
+      due_day                 INT           NOT NULL DEFAULT 10,
+      due_date                DATE,
+      extension_days          INT           NOT NULL DEFAULT 5,
+      late_fee_day            INT           NOT NULL DEFAULT 15,
+      late_fee_amount         NUMERIC(10,2) NOT NULL DEFAULT 0,
+      payment_methods_allowed VARCHAR(255)  DEFAULT 'cash,card,online,cheque,upi',
+      notes                   TEXT,
+      is_active               BOOLEAN       NOT NULL DEFAULT TRUE,
+      created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+      updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_fee_schedules_school_id ON fee_payment_schedules(school_id);
+  `);
 
   // Ensure user_name column exists on users table
   await appQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS user_name VARCHAR(150);`);

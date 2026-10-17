@@ -30,6 +30,7 @@ import { DivisionMaster } from "./entities/division-master.entity.js";
 import { RoleMaster } from "./entities/role-master.entity.js";
 import { CasteMaster } from "./entities/caste-master.entity.js";
 import { SchoolClassFeeStructure } from "./entities/class-fee-structure.entity.js";
+import { FeePaymentSchedule } from "./entities/fee-payment-schedule.entity.js";
 import { AcademicCalendarEvent } from "./entities/academic-calendar-event.entity.js";
 import { SchoolWorkingDay } from "./entities/school-working-day.entity.js";
 
@@ -97,6 +98,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               RoleMaster,
               CasteMaster,
               SchoolClassFeeStructure,
+              FeePaymentSchedule,
               AcademicCalendarEvent,
               SchoolWorkingDay,
             ],
@@ -144,6 +146,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
             RoleMaster,
             CasteMaster,
             SchoolClassFeeStructure,
+            FeePaymentSchedule,
             AcademicCalendarEvent,
             SchoolWorkingDay,
           ],

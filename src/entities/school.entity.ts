@@ -37,6 +37,12 @@ export class School {
   @Column({ type: "varchar", length: 20, default: "2024-25" })
   academic_year: string;
 
+  @Column({ type: "varchar", length: 20, default: "april" })
+  fee_session_start: string;
+
+  @Column({ type: "varchar", length: 20, default: "monthly" })
+  fee_frequency: string;
+
   @Column({ type: "boolean", default: true })
   is_active: boolean;
 

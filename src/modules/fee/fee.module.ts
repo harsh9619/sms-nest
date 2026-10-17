@@ -5,6 +5,9 @@ import { FeeReceipt } from "../../entities/fee-receipt.entity.js";
 import { SchoolClassFeeStructure } from "../../entities/class-fee-structure.entity.js";
 import { Student } from "../../entities/student.entity.js";
 import { SchoolClass } from "../../entities/school-class.entity.js";
+import { School } from "../../entities/school.entity.js";
+import { FeePaymentSchedule } from "../../entities/fee-payment-schedule.entity.js";
+import { User } from "../../entities/user.entity.js";
 import { FeeController } from "./fee.controller.js";
 import { FeeService } from "./fee.service.js";
 import { AcademicYearModule } from "../academic-year/academic-year.module.js";
@@ -12,7 +15,16 @@ import { AcademicYearModule } from "../academic-year/academic-year.module.js";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Fee, FeeReceipt, SchoolClassFeeStructure, Student, SchoolClass]),
+    TypeOrmModule.forFeature([
+      Fee,
+      FeeReceipt,
+      SchoolClassFeeStructure,
+      Student,
+      SchoolClass,
+      School,
+      FeePaymentSchedule,
+      User,
+    ]),
     AcademicYearModule
   ],
   controllers: [FeeController],

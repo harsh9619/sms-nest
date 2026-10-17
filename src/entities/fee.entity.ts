@@ -11,6 +11,7 @@ import { School } from "./school.entity.js";
 import { SchoolAcademicYear } from "./school-academic-year.entity.js";
 import { Student } from "./student.entity.js";
 import { FeeReceipt } from "./fee-receipt.entity.js";
+import { FeePaymentSchedule } from "./fee-payment-schedule.entity.js";
 
 @Entity("fees")
 export class Fee {
@@ -37,6 +38,19 @@ export class Fee {
   @ManyToOne(() => Student, { onDelete: "CASCADE" })
   @JoinColumn({ name: "student_id" })
   student: Student;
+
+  @Column({ type: "int", nullable: true })
+  schedule_id: number;
+
+  @ManyToOne(() => FeePaymentSchedule, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "schedule_id" })
+  schedule: FeePaymentSchedule;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  installment_name: string;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  session_start: string;
 
   @Column({ type: "int", nullable: true })
   receipt_id: number;
