@@ -746,6 +746,11 @@ export class FeeService {
             if (isTerm2Struct) return isT2;
             if (isGenericTermStruct) return isT1 || isT2;
 
+            // Any time in year fees (Uniform, Science Lab, Other) are flexible and not generated in regular month cycles
+            if (struct.month === "anytime" || struct.month === "any_time" || struct.month === "any" || struct.month === "flexible" || struct.month === "on_demand") {
+              return false;
+            }
+
             if (!struct.month || struct.month === "all" || struct.month === "every_month" || freqLower === "monthly") {
               return true;
             }
@@ -940,6 +945,11 @@ export class FeeService {
         // Generic Term structure
         if (isGenericTermStruct) {
           return isTerm1Applicable || isTerm2Applicable;
+        }
+
+        // Any time in year fees (Uniform, Science Lab, Other) are flexible and not generated in regular month cycles
+        if (struct.month === "anytime" || struct.month === "any_time" || struct.month === "any" || struct.month === "flexible" || struct.month === "on_demand") {
+          return false;
         }
 
         // Recurring monthly components (e.g. Monthly Tuition Fee)
