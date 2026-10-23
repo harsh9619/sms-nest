@@ -52,6 +52,7 @@ import { AcademicYearModule } from "./modules/academic-year/academic-year.module
 import { CasteModule } from "./modules/caste/caste.module.js";
 import { OcrModule } from "./modules/ocr/ocr.module.js";
 import { AcademicCalendarModule } from "./modules/academic-calendar/academic-calendar.module.js";
+import { PaymentGatewayModule } from "./modules/payment-gateway/payment-gateway.module.js";
 
 import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
 
@@ -177,6 +178,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
     CasteModule,
     OcrModule,
     AcademicCalendarModule,
+    PaymentGatewayModule,
   ],
 })
 export class AppModule implements NestModule {

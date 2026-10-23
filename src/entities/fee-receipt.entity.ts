@@ -46,6 +46,15 @@ export class FeeReceipt {
   @Column({ type: "text", nullable: true })
   remarks: string;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  razorpay_order_id: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  razorpay_payment_id: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  razorpay_signature: string;
+
   @OneToMany(() => Fee, (fee) => fee.receipt)
   fees: Fee[];
 

@@ -98,22 +98,28 @@ ON CONFLICT (name) DO NOTHING;
 -- =======================
 
 CREATE TABLE IF NOT EXISTS schools (
-  id               SERIAL PRIMARY KEY,
-  name             VARCHAR(200)      NOT NULL,
-  slug             VARCHAR(200)      NOT NULL UNIQUE,
-  address          TEXT,
-  phone            VARCHAR(20),
-  email            VARCHAR(150),
-  logo_url         VARCHAR(500),
-  board            VARCHAR(100),
-  academic_year    VARCHAR(20)       NOT NULL DEFAULT '2024-25',
-  is_active        BOOLEAN           NOT NULL DEFAULT TRUE,
-  subscription     subscription_plan NOT NULL DEFAULT 'free',
-  max_students     INT               NOT NULL DEFAULT 500,
-  theme            TEXT              NOT NULL DEFAULT 'default' CHECK (theme IN ('default','emerald','purple','rose','amber')),
-  appearance_mode  TEXT              NOT NULL DEFAULT 'light' CHECK (appearance_mode IN ('light','dark')),
-  created_at       TIMESTAMPTZ       NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ       NOT NULL DEFAULT now()
+  id                  SERIAL PRIMARY KEY,
+  name                VARCHAR(200)      NOT NULL,
+  slug                VARCHAR(200)      NOT NULL UNIQUE,
+  address             TEXT,
+  phone               VARCHAR(20),
+  email               VARCHAR(150),
+  logo_url            VARCHAR(500),
+  board               VARCHAR(100),
+  academic_year       VARCHAR(20)       NOT NULL DEFAULT '2024-25',
+  fee_session_start   VARCHAR(20)       NOT NULL DEFAULT 'april',
+  fee_frequency       VARCHAR(20)       NOT NULL DEFAULT 'monthly',
+  is_active           BOOLEAN           NOT NULL DEFAULT TRUE,
+  subscription        subscription_plan NOT NULL DEFAULT 'free',
+  max_students        INT               NOT NULL DEFAULT 500,
+  theme               TEXT              NOT NULL DEFAULT 'default' CHECK (theme IN ('default','emerald','purple','rose','amber')),
+  appearance_mode     TEXT              NOT NULL DEFAULT 'light' CHECK (appearance_mode IN ('light','dark')),
+  razorpay_key_id     VARCHAR(255)      DEFAULT 'rzp_test_school_dummy_key',
+  razorpay_key_secret VARCHAR(255)      DEFAULT 'mock_rzp_secret_dummy_test',
+  razorpay_enabled    BOOLEAN           NOT NULL DEFAULT TRUE,
+  razorpay_test_mode  BOOLEAN           NOT NULL DEFAULT TRUE,
+  created_at          TIMESTAMPTZ       NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ       NOT NULL DEFAULT now()
 );
 
 -- =======================
@@ -505,6 +511,9 @@ CREATE TABLE IF NOT EXISTS fee_receipts (
   payment_method          VARCHAR(50)   NOT NULL DEFAULT 'cash',
   months_covered          VARCHAR(255),
   remarks                 TEXT,
+  razorpay_order_id       VARCHAR(100),
+  razorpay_payment_id     VARCHAR(100),
+  razorpay_signature      VARCHAR(255),
   created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
@@ -512,6 +521,8 @@ CREATE TABLE IF NOT EXISTS fee_receipts (
 CREATE INDEX IF NOT EXISTS idx_fee_receipts_school_id ON fee_receipts(school_id);
 CREATE INDEX IF NOT EXISTS idx_fee_receipts_student_id ON fee_receipts(student_id);
 CREATE INDEX IF NOT EXISTS idx_fee_receipts_receipt_number ON fee_receipts(receipt_number);
+CREATE INDEX IF NOT EXISTS idx_fee_receipts_rzp_payment ON fee_receipts(razorpay_payment_id);
+CREATE INDEX IF NOT EXISTS idx_fee_receipts_rzp_order ON fee_receipts(razorpay_order_id);
 
 -- =======================
 -- TABLE: fees

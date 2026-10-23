@@ -291,6 +291,9 @@ export class FeeController {
       paymentMethod?: string;
       paidDate?: string;
       remarks?: string;
+      razorpayOrderId?: string;
+      razorpayPaymentId?: string;
+      razorpaySignature?: string;
     }
   ) {
     const schoolId = schoolIdStr ? toIntID(String(schoolIdStr)) : 0;
@@ -303,6 +306,9 @@ export class FeeController {
       paymentMethod: body.paymentMethod,
       paidDate: body.paidDate,
       remarks: body.remarks,
+      razorpayOrderId: body.razorpayOrderId,
+      razorpayPaymentId: body.razorpayPaymentId,
+      razorpaySignature: body.razorpaySignature,
     });
   }
 

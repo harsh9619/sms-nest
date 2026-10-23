@@ -1577,8 +1577,20 @@ export class FeeService {
     paymentMethod?: string;
     paidDate?: string;
     remarks?: string;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
   }) {
-    const { studentId, feeIds, paymentMethod = "cash", paidDate, remarks } = data;
+    const {
+      studentId,
+      feeIds,
+      paymentMethod = "cash",
+      paidDate,
+      remarks,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    } = data;
     if (!feeIds || feeIds.length === 0) {
       throw new NotFoundException("No fee items provided for payment");
     }
@@ -1611,6 +1623,9 @@ export class FeeService {
       payment_method: paymentMethod,
       months_covered: monthsCovered || "Custom Payment",
       remarks: remarks || null,
+      razorpay_order_id: razorpayOrderId || null,
+      razorpay_payment_id: razorpayPaymentId || null,
+      razorpay_signature: razorpaySignature || null,
     });
 
     const savedReceipt = await this.feeReceiptRepo.save(receipt);

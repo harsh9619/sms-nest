@@ -58,6 +58,18 @@ export class School {
   @Column({ type: "text", default: "light" })
   appearance_mode: string;
 
+  @Column({ type: "varchar", length: 255, nullable: true, default: "rzp_test_school_dummy_key" })
+  razorpay_key_id: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true, default: "mock_rzp_secret_dummy_test" })
+  razorpay_key_secret: string;
+
+  @Column({ type: "boolean", default: true })
+  razorpay_enabled: boolean;
+
+  @Column({ type: "boolean", default: true })
+  razorpay_test_mode: boolean;
+
   @OneToMany("SchoolAcademicYear", "school")
   academic_years: SchoolAcademicYear[];
 

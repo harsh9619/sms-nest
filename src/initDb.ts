@@ -133,6 +133,15 @@ async function removeLegacySchoolClassTeacherColumn(appQuery: any) {
   await appQuery(`ALTER TABLE fees ADD COLUMN IF NOT EXISTS session_start VARCHAR(20);`);
   await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_session_start VARCHAR(20) DEFAULT 'april';`);
   await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_frequency VARCHAR(20) DEFAULT 'monthly';`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS razorpay_key_id VARCHAR(255) DEFAULT 'rzp_test_school_dummy_key';`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS razorpay_key_secret VARCHAR(255) DEFAULT 'mock_rzp_secret_dummy_test';`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS razorpay_enabled BOOLEAN DEFAULT true;`);
+  await appQuery(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS razorpay_test_mode BOOLEAN DEFAULT true;`);
+  await appQuery(`ALTER TABLE fee_receipts ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(100);`);
+  await appQuery(`ALTER TABLE fee_receipts ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(100);`);
+  await appQuery(`ALTER TABLE fee_receipts ADD COLUMN IF NOT EXISTS razorpay_signature VARCHAR(255);`);
+  await appQuery(`CREATE INDEX IF NOT EXISTS idx_fee_receipts_rzp_payment ON fee_receipts(razorpay_payment_id);`);
+  await appQuery(`CREATE INDEX IF NOT EXISTS idx_fee_receipts_rzp_order ON fee_receipts(razorpay_order_id);`);
 
   await appQuery(`
     CREATE TABLE IF NOT EXISTS fee_payment_schedules (

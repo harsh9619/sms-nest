@@ -61,6 +61,10 @@ export class SchoolService {
         isActive: school.is_active,
         subscription: school.subscription,
         maxStudents: school.max_students,
+        razorpayKeyId: school.razorpay_key_id || "rzp_test_school_dummy_key",
+        razorpayKeySecret: school.razorpay_key_secret || "mock_rzp_secret_dummy_test",
+        razorpayEnabled: school.razorpay_enabled !== undefined ? school.razorpay_enabled : true,
+        razorpayTestMode: school.razorpay_test_mode !== undefined ? school.razorpay_test_mode : true,
         academicYear:
           currentAcademicYear?.academic_year?.label ?? school.academic_year,
         schoolAcademicYearId: currentAcademicYear
@@ -108,6 +112,10 @@ export class SchoolService {
       max_students: data.max_students || data.maxStudents || 500,
       theme: data.theme || "default",
       appearance_mode: data.appearance_mode || data.appearanceMode || "light",
+      razorpay_key_id: data.razorpay_key_id || data.razorpayKeyId || "rzp_test_school_dummy_key",
+      razorpay_key_secret: data.razorpay_key_secret || data.razorpayKeySecret || "mock_rzp_secret_dummy_test",
+      razorpay_enabled: data.razorpay_enabled !== undefined ? data.razorpay_enabled : (data.razorpayEnabled !== undefined ? data.razorpayEnabled : true),
+      razorpay_test_mode: data.razorpay_test_mode !== undefined ? data.razorpay_test_mode : (data.razorpayTestMode !== undefined ? data.razorpayTestMode : true),
     };
 
     const newSchool = this.schoolRepo.create(schoolPayload);
@@ -141,6 +149,10 @@ export class SchoolService {
     if (data.max_students !== undefined || data.maxStudents !== undefined) schoolPayload.max_students = data.max_students || data.maxStudents;
     if (data.theme !== undefined) schoolPayload.theme = data.theme;
     if (data.appearance_mode !== undefined || data.appearanceMode !== undefined) schoolPayload.appearance_mode = data.appearance_mode || data.appearanceMode;
+    if (data.razorpay_key_id !== undefined || data.razorpayKeyId !== undefined) schoolPayload.razorpay_key_id = data.razorpay_key_id ?? data.razorpayKeyId;
+    if (data.razorpay_key_secret !== undefined || data.razorpayKeySecret !== undefined) schoolPayload.razorpay_key_secret = data.razorpay_key_secret ?? data.razorpayKeySecret;
+    if (data.razorpay_enabled !== undefined || data.razorpayEnabled !== undefined) schoolPayload.razorpay_enabled = data.razorpay_enabled !== undefined ? data.razorpay_enabled : data.razorpayEnabled;
+    if (data.razorpay_test_mode !== undefined || data.razorpayTestMode !== undefined) schoolPayload.razorpay_test_mode = data.razorpay_test_mode !== undefined ? data.razorpay_test_mode : data.razorpayTestMode;
 
     await this.schoolRepo.update(id, schoolPayload);
 
