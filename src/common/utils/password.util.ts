@@ -61,7 +61,7 @@ export async function comparePassword(
  * Gets the default plain-text password from env or fallback.
  */
 export function getDefaultPassword(): string {
-  return process.env.DEFAULT_PASSWORD || 'password123';
+  return process.env.DEFAULT_PASSWORD || '';
 }
 
 /**
