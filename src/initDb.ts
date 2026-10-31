@@ -15,6 +15,7 @@ const dbName = process.env.DB_NAME || "school_management";
 const SCHEMA_PATH = path.join(__dirname, "..", "sql", "database.sql");
 const SEED_PATH = path.join(__dirname, "..", "sql", "seed.sql");
 const DATA_PATH = path.join(__dirname, "..", "data.json");
+const DEFAULT_SEED_PASSWORD_HASH = "$2b$10$PcfJ9TEGPvUN8ggo4M5LpOEaouoZGQcwe8vZMO6s92xOwCsGtqnXO";
 
 function toUUID(str: any): number {
   if (str === null || str === undefined) return 0;
@@ -39,7 +40,7 @@ async function ensureDatabaseExists() {
     port: Number(process.env.DB_PORT || 5432),
     database: "postgres", // Connect to system database first
     user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "admin123",
+    password: process.env.DB_PASSWORD || "",
   });
 
   try {
@@ -410,7 +411,7 @@ async function ensureStudentExists(appQuery: any, studentId: string, name: strin
      OVERRIDING SYSTEM VALUE
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (id) DO NOTHING`,
-    [userUuid, toUUID(schoolId), name, `student_${studentId}@school.com`, "admin123", ROLE_MAP["student"], "student", true]
+    [userUuid, toUUID(schoolId), name, `student_${studentId}@school.com`, DEFAULT_SEED_PASSWORD_HASH, ROLE_MAP["student"], "student", true]
   );
 
   const schoolUuid = toUUID(schoolId);
@@ -449,7 +450,7 @@ async function ensureTeacherExists(appQuery: any, teacherId: string, name: strin
      OVERRIDING SYSTEM VALUE
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (id) DO NOTHING`,
-    [teacherUuid, toUUID(schoolId), name, `teacher_${teacherId}@school.com`, "admin123", ROLE_MAP["teacher"], "teacher", true]
+    [teacherUuid, toUUID(schoolId), name, `teacher_${teacherId}@school.com`, DEFAULT_SEED_PASSWORD_HASH, ROLE_MAP["teacher"], "teacher", true]
   );
 
   await appQuery(
@@ -516,7 +517,7 @@ async function initializeDatabase() {
       port: Number(process.env.DB_PORT || 5432),
       database: dbName,
       user: process.env.DB_USER || "postgres",
-      password: process.env.DB_PASSWORD || "admin123",
+      password: process.env.DB_PASSWORD || "",
     });
 
     const appQuery = async (text: string, params?: any[]) => {
@@ -710,7 +711,7 @@ async function initializeDatabase() {
             u.name,
             userName,
             u.email,
-            "admin123", // default password
+            DEFAULT_SEED_PASSWORD_HASH, // default password
             ROLE_MAP[role] || 4,
             role,
             u.phone || null,
@@ -736,7 +737,7 @@ async function initializeDatabase() {
              OVERRIDING SYSTEM VALUE
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (id) DO NOTHING`,
-            [teacherUserId, toUUID(t.schoolId), t.name, teacherUserName, t.email, "admin123", ROLE_MAP["teacher"], "teacher", t.phone || null, true]
+            [teacherUserId, toUUID(t.schoolId), t.name, teacherUserName, t.email, DEFAULT_SEED_PASSWORD_HASH, ROLE_MAP["teacher"], "teacher", t.phone || null, true]
           );
         } else {
           await appQuery(
@@ -969,7 +970,7 @@ async function initializeDatabase() {
              OVERRIDING SYSTEM VALUE
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (id) DO NOTHING`,
-            [userUuid, schoolId, s.name, s.email, "admin123", ROLE_MAP["student"], "student", s.phone || null, true]
+            [userUuid, schoolId, s.name, s.email, DEFAULT_SEED_PASSWORD_HASH, ROLE_MAP["student"], "student", s.phone || null, true]
           );
         } else {
           await appQuery(
@@ -1015,7 +1016,7 @@ async function initializeDatabase() {
                OVERRIDING SYSTEM VALUE
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                ON CONFLICT (id) DO NOTHING`,
-              [newParentUuid, schoolId, s.parentName, parentEmail, "admin123", ROLE_MAP["parent"], "parent", s.parentPhone || null, true]
+              [newParentUuid, schoolId, s.parentName, parentEmail, DEFAULT_SEED_PASSWORD_HASH, ROLE_MAP["parent"], "parent", s.parentPhone || null, true]
             );
             parentUserId = newParentUuid;
           }

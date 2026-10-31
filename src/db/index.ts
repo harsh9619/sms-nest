@@ -23,7 +23,7 @@ export const pool = connectionString
     port: Number(process.env.DB_PORT || 5432),
     database: process.env.DB_NAME || "school_management",
     user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "admin123",
+    password: process.env.DB_PASSWORD || "",
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,

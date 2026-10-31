@@ -118,7 +118,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
           port: Number(configService.get<number>("DB_PORT") || 5432),
           database: configService.get<string>("DB_NAME") || "school_management",
           username: configService.get<string>("DB_USER") || "postgres",
-          password: configService.get<string>("DB_PASSWORD") || "admin123",
+          password: configService.get<string>("DB_PASSWORD") || "",
           entities: [
             School,
             User,
