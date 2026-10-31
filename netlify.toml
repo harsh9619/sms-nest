@@ -1,0 +1,25 @@
+[build]
+  command = "npm run build"
+  # Static landing page only; dist/ holds compiled server code and must not be published.
+  publish = "public"
+
+[functions]
+  # Keep Nest/TypeORM as real node_modules so their optional, lazily-required
+  # dependencies resolve at runtime instead of breaking the bundle.
+  external_node_modules = [
+    "@nestjs/common",
+    "@nestjs/core",
+    "@nestjs/config",
+    "@nestjs/platform-express",
+    "@nestjs/typeorm",
+    "typeorm",
+    "pg",
+    "reflect-metadata",
+    "class-transformer",
+    "class-validator",
+    "express",
+    "pdfkit",
+    "openai",
+    "@google/generative-ai",
+  ]
+  included_files = ["uploads/**"]
