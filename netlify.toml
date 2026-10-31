@@ -22,4 +22,4 @@
     "openai",
     "@google/generative-ai",
   ]
-  included_files = ["uploads/**"]
+  included_files = ["dist/**", "uploads/**"]

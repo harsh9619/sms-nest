@@ -10,11 +10,14 @@ let originPromise: Promise<string> | undefined;
 // across invocations.
 const getOrigin = () => {
     originPromise ??= (async () => {
+        console.log("Bootstrapping NestJS application in Netlify function...");
         const app = await createApp();
         await app.listen(0, "127.0.0.1");
         const { port } = app.getHttpServer().address() as AddressInfo;
+        console.log(`NestJS application listening on internal port ${port}`);
         return `http://127.0.0.1:${port}`;
     })().catch((err) => {
+        console.error("FATAL: Failed to bootstrap NestJS app:", err);
         originPromise = undefined;
         throw err;
     });
@@ -22,26 +25,45 @@ const getOrigin = () => {
 };
 
 export default async (req: Request) => {
-    const origin = await getOrigin();
-    const url = new URL(req.url);
-    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    try {
+        const origin = await getOrigin();
+        const url = new URL(req.url);
+        const hasBody = req.method !== "GET" && req.method !== "HEAD";
+        const body = hasBody ? await req.arrayBuffer() : undefined;
 
-    const res = await fetch(origin + url.pathname + url.search, {
-        method: req.method,
-        headers: req.headers,
-        body: hasBody ? req.body : undefined,
-        redirect: "manual",
-        // @ts-expect-error duplex is required by Node when streaming a request body
-        duplex: "half",
-    });
+        const forwardHeaders = new Headers(req.headers);
+        forwardHeaders.delete("host");
+        forwardHeaders.delete("connection");
 
-    // fetch already decoded the body, so drop headers describing the raw encoding.
-    const headers = new Headers(res.headers);
-    headers.delete("content-encoding");
-    headers.delete("content-length");
-    headers.delete("transfer-encoding");
+        const res = await fetch(origin + url.pathname + url.search, {
+            method: req.method,
+            headers: forwardHeaders,
+            body,
+            redirect: "manual",
+        });
 
-    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+        // fetch already decoded the body, so drop headers describing the raw encoding.
+        const headers = new Headers(res.headers);
+        headers.delete("content-encoding");
+        headers.delete("content-length");
+        headers.delete("transfer-encoding");
+
+        return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+    } catch (error: any) {
+        console.error("Netlify Function handler error:", error);
+        return new Response(
+            JSON.stringify({
+                statusCode: 500,
+                error: "Netlify Function Handler Error",
+                message: error?.message || String(error),
+                stack: error?.stack,
+            }),
+            {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+    }
 };
 
 export const config: Config = {

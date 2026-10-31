@@ -20,22 +20,28 @@ dotenv.config({ path: path.join(currentDir, "..", "..", ".env") });
 
 const connectionString = process.env.DATABASE_URL;
 
+const isRemoteDb = !!connectionString && !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1");
+const dbHost = process.env.DB_HOST || "localhost";
+const isRemoteHost = dbHost !== "localhost" && dbHost !== "127.0.0.1";
+
 export const pool = connectionString
   ? new pg.Pool({
     connectionString,
-    max: 20,
+    max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 5000,
+    ssl: isRemoteDb ? { rejectUnauthorized: false } : undefined,
   })
   : new pg.Pool({
-    host: process.env.DB_HOST || "localhost",
+    host: dbHost,
     port: Number(process.env.DB_PORT || 5432),
     database: process.env.DB_NAME || "school_management",
     user: process.env.DB_USER || "postgres",
     password: process.env.DB_PASSWORD || "",
-    max: 20,
+    max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 5000,
+    ssl: isRemoteHost ? { rejectUnauthorized: false } : undefined,
   });
 
 pool.on("error", (err) => {

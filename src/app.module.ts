@@ -67,6 +67,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const connectionString = configService.get<string>("DATABASE_URL");
+        const isRemote = !!connectionString && !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1");
         if (connectionString) {
           return {
             type: "postgres",
@@ -104,10 +105,12 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
               SchoolWorkingDay,
             ],
             synchronize: false,
+            ssl: isRemote ? { rejectUnauthorized: false } : false,
             extra: {
               max: 20,
               idleTimeoutMillis: 30000,
-              connectionTimeoutMillis: 2000,
+              connectionTimeoutMillis: 5000,
+            ssl: (configService.get<string>("DB_HOST") && configService.get<string>("DB_HOST") !== "localhost") ? { rejectUnauthorized: false } : undefined,
             },
           };
         }
@@ -119,6 +122,7 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
           database: configService.get<string>("DB_NAME") || "school_management",
           username: configService.get<string>("DB_USER") || "postgres",
           password: configService.get<string>("DB_PASSWORD") || "",
+          ssl: (configService.get<string>("DB_HOST") && configService.get<string>("DB_HOST") !== "localhost") ? { rejectUnauthorized: false } : false,
           entities: [
             School,
             User,
@@ -155,7 +159,8 @@ import { LoggerMiddleware } from "./common/middleware/logger.middleware.js";
           extra: {
             max: 20,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000,
+            connectionTimeoutMillis: 5000,
+            ssl: (configService.get<string>("DB_HOST") && configService.get<string>("DB_HOST") !== "localhost") ? { rejectUnauthorized: false } : undefined,
           },
         };
       },
