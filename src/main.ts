@@ -23,6 +23,8 @@ async function bootstrap() {
     "http://localhost:3000",
     "http://localhost:5000",
     "https://sms-nest.onrender.com",
+    "https://edorbit-fe.netlify.app",
+    "https://edorbit.netlify.app",
     ...rawAllowedOrigins.split(",").map((o) => o.trim()).filter(Boolean),
   ];
 
@@ -34,7 +36,7 @@ async function bootstrap() {
       const isWhitelisted =
         allowedOrigins.includes("*") ||
         allowedOrigins.includes(origin) ||
-        /\.vercel\.app$/.test(new URL(origin).hostname) ||
+        /\.vercel\.app$/.test(new URL(origin).hostname) || /\.netlify\.app$/.test(new URL(origin).hostname) ||
         process.env.NODE_ENV !== "production";
 
       if (isWhitelisted) {

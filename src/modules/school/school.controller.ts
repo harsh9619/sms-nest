@@ -19,6 +19,16 @@ import { JwtAuthGuard } from "../../common/guards/auth.guard.js";
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
 
+  @Get()
+  getRoot() {
+    return {
+      message: "Edorbit School Management API is running",
+      status: "ok",
+      health: "/health",
+      time: new Date().toISOString(),
+    };
+  }
+
   @Get("health")
   getHealth() {
     return { status: "ok", time: new Date().toISOString() };
