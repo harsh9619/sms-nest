@@ -1,7 +1,7 @@
 [build]
   command = "npm run build"
   # Static landing page only; dist/ holds compiled server code and must not be published.
-  publish = "public"
+  publish = "dist"
 
 [functions]
   # Keep Nest/TypeORM as real node_modules so their optional, lazily-required
