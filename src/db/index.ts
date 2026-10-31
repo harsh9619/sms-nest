@@ -3,11 +3,20 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
+
+// // Load environment variables from the server's .env file
+// dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
+
+
+const currentFile = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFile);
 
 // Load environment variables from the server's .env file
-dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
+dotenv.config({ path: path.join(currentDir, "..", "..", ".env") });
+
 
 const connectionString = process.env.DATABASE_URL;
 
